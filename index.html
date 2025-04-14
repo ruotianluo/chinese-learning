@@ -22,7 +22,7 @@
         .toc-item.active { background-color: #3b82f6; color: white; font-weight: bold; border-color: #2563eb; }
 
         /* Main Content Area */
-        #mainContentArea { flex-grow: 1; display: flex; flex-direction: column; align-items: center; padding: 1rem; height: 100%; overflow-y: auto; }
+        #mainContentArea { flex-grow: 1; display: flex; flex-direction: column; align-items: center; padding: 1rem; height: 100%; overflow-y: auto; background-color: #f0f9ff; /* 确保内容区也有背景色 */ }
 
         /* Character Display */
         .character-display { font-family: 'Noto Sans SC', sans-serif; font-size: 15rem; line-height: 1; color: #d1d5db; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); user-select: none; z-index: 1; }
@@ -30,15 +30,14 @@
 
         /* Buttons */
         .control-button { padding: 0.8rem 1.5rem; font-size: 1.2rem; font-weight: bold; color: white; background-color: #3b82f6; border: none; border-radius: 0.75rem; cursor: pointer; transition: background-color 0.3s ease, opacity 0.3s ease; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
-        .control-button:hover:not(:disabled) { background-color: #2563eb; } /* Add :not(:disabled) */
-        .control-button:active:not(:disabled) { background-color: #1d4ed8; transform: translateY(1px); } /* Add :not(:disabled) */
-        .control-button:disabled { background-color: #9ca3af; opacity: 0.7; cursor: not-allowed; } /* Style for disabled button */
+        .control-button:hover:not(:disabled) { background-color: #2563eb; }
+        .control-button:active:not(:disabled) { background-color: #1d4ed8; transform: translateY(1px); }
+        .control-button:disabled { background-color: #9ca3af; opacity: 0.7; cursor: not-allowed; }
 
         #fullscreenBtn { background-color: #10b981; }
         #fullscreenBtn:hover:not(:disabled) { background-color: #059669; }
         #fullscreenBtn:active:not(:disabled) { background-color: #047857; }
-        /* Specific color for Prev button */
-        #prevBtn { background-color: #f59e0b; } /* Amber color */
+        #prevBtn { background-color: #f59e0b; }
         #prevBtn:hover:not(:disabled) { background-color: #d97706; }
         #prevBtn:active:not(:disabled) { background-color: #b45309; }
 
@@ -93,7 +92,7 @@
 
     <script>
         // --- Configuration ---
-        const characters = [ /* ... (character list remains the same as previous version) ... */
+        const characters = [ /* ... (character list remains the same) ... */
              // Numbers & Basics
             { char: '一', pinyin: 'yī', meaning: 'one', emoji: '1️⃣' }, { char: '二', pinyin: 'èr', meaning: 'two', emoji: '2️⃣' }, { char: '三', pinyin: 'sān', meaning: 'three', emoji: '3️⃣' }, { char: '四', pinyin: 'sì', meaning: 'four', emoji: '4️⃣' }, { char: '五', pinyin: 'wǔ', meaning: 'five', emoji: '5️⃣' }, { char: '六', pinyin: 'liù', meaning: 'six', emoji: '6️⃣' }, { char: '七', pinyin: 'qī', meaning: 'seven', emoji: '7️⃣' }, { char: '八', pinyin: 'bā', meaning: 'eight', emoji: '8️⃣' }, { char: '九', pinyin: 'jiǔ', meaning: 'nine', emoji: '9️⃣' }, { char: '十', pinyin: 'shí', meaning: 'ten', emoji: '🔟' }, { char: '百', pinyin: 'bǎi', meaning: 'hundred', emoji: '💯' }, { char: '人', pinyin: 'rén', meaning: 'person', emoji: '👤' }, { char: '大', pinyin: 'dà', meaning: 'big', emoji: '🐘' }, { char: '小', pinyin: 'xiǎo', meaning: 'small', emoji: '🐜' }, { char: '口', pinyin: 'kǒu', meaning: 'mouth', emoji: '👄' }, { char: '中', pinyin: 'zhōng', meaning: 'middle', emoji: '🎯' }, { char: '国', pinyin: 'guó', meaning: 'country', emoji: '🗺️' },
             // Nature
@@ -128,7 +127,7 @@
         const characterDisplay = document.getElementById('characterDisplay');
         const meaningEmoji = document.getElementById('meaningEmoji');
         const clearBtn = document.getElementById('clearBtn');
-        const prevBtn = document.getElementById('prevBtn'); // Get Previous button
+        const prevBtn = document.getElementById('prevBtn');
         const nextBtn = document.getElementById('nextBtn');
         const fullscreenBtn = document.getElementById('fullscreenBtn');
         const randomCheckbox = document.getElementById('randomCheckbox');
@@ -137,11 +136,11 @@
         const synth = window.speechSynthesis;
         let voices = [];
         function populateVoiceList() { /* ... (no changes) ... */
-            if(typeof speechSynthesis === 'undefined') { console.warn("Speech Synthesis not supported."); return; }
+            if(typeof speechSynthesis === 'undefined') { console.warn("语音合成不支持 (Speech Synthesis not supported)."); return; }
             voices = synth.getVoices().filter(voice => voice.lang.startsWith('zh'));
             if (voices.length === 0 && synth.onvoiceschanged !== undefined) {
-                synth.onvoiceschanged = () => { voices = synth.getVoices().filter(voice => voice.lang.startsWith('zh')); console.log("Voices loaded:", voices); };
-            } else { console.log("Chinese voices found:", voices); }
+                synth.onvoiceschanged = () => { voices = synth.getVoices().filter(voice => voice.lang.startsWith('zh')); console.log("语音库已加载 (Voices loaded):", voices); };
+            } else { console.log("找到中文语音库 (Chinese voices found):", voices); }
         }
         populateVoiceList();
         if (typeof speechSynthesis !== 'undefined' && speechSynthesis.onvoiceschanged !== undefined) { speechSynthesis.onvoiceschanged = populateVoiceList; }
@@ -149,7 +148,7 @@
             if (!synth) return; if (synth.speaking) synth.cancel();
             if (character !== '') {
                 const utterThis = new SpeechSynthesisUtterance(character);
-                utterThis.onerror = (event) => console.error('SpeechSynthesisUtterance.onerror', event);
+                utterThis.onerror = (event) => console.error('语音合成错误 (SpeechSynthesisUtterance.onerror)', event);
                 const chineseVoice = voices.find(voice => voice.lang === 'zh-CN') || voices.find(voice => voice.lang.startsWith('zh'));
                 if (chineseVoice) utterThis.voice = chineseVoice; else utterThis.lang = 'zh-CN';
                 utterThis.pitch = 1; utterThis.rate = 0.8;
@@ -177,7 +176,7 @@
             if (characters.length > 0) { displayCharacter(); }
         }
         function displayCharacter() { /* ... (no changes) ... */
-            if (currentCharacterIndex < 0 || currentCharacterIndex >= characters.length) { console.error("Invalid index:", currentCharacterIndex); currentCharacterIndex = 0; if (characters.length === 0) return; }
+            if (currentCharacterIndex < 0 || currentCharacterIndex >= characters.length) { console.error("无效索引 (Invalid index):", currentCharacterIndex); currentCharacterIndex = 0; if (characters.length === 0) return; }
             const currentCharData = characters[currentCharacterIndex]; characterDisplay.textContent = currentCharData.char;
             meaningEmoji.textContent = currentCharData.emoji || ''; clearCanvas(); speakCharacter(currentCharData.char); updateTocHighlight();
         }
@@ -192,56 +191,44 @@
             else if (event.clientX !== undefined) { clientX = event.clientX; clientY = event.clientY; } else { return null; }
             return { x: clientX - rect.left, y: clientY - rect.top };
         }
-
-        // Function to go to the PREVIOUS character (only in sequential mode)
-        function previousCharacter() {
-            if (characters.length === 0 || randomCheckbox.checked) return; // Do nothing if no chars or random mode
-
-            // Calculate previous index with wrap around
-            currentCharacterIndex = (currentCharacterIndex - 1 + characters.length) % characters.length;
-            displayCharacter();
+        function previousCharacter() { /* ... (no changes) ... */
+            if (characters.length === 0 || randomCheckbox.checked) return;
+            currentCharacterIndex = (currentCharacterIndex - 1 + characters.length) % characters.length; displayCharacter();
         }
-
-        // Modified nextCharacter to handle random mode potentially differently if needed
-        function nextCharacter() {
-            if (characters.length === 0) return;
-            const isRandom = randomCheckbox.checked;
-            let nextIndex;
-            if (isRandom) {
-                if (characters.length <= 1) nextIndex = 0;
-                else do { nextIndex = Math.floor(Math.random() * characters.length); } while (nextIndex === currentCharacterIndex);
-            } else {
-                nextIndex = (currentCharacterIndex + 1) % characters.length;
-            }
-            currentCharacterIndex = nextIndex;
-            displayCharacter();
+        function nextCharacter() { /* ... (no changes) ... */
+            if (characters.length === 0) return; const isRandom = randomCheckbox.checked; let nextIndex;
+            if (isRandom) { if (characters.length <= 1) nextIndex = 0; else do { nextIndex = Math.floor(Math.random() * characters.length); } while (nextIndex === currentCharacterIndex); }
+            else { nextIndex = (currentCharacterIndex + 1) % characters.length; }
+            currentCharacterIndex = nextIndex; displayCharacter();
         }
-
         function handleTocClick(event) { /* ... (no changes) ... */
             const target = event.target; if (target.classList.contains('toc-item') && target.dataset.index !== undefined) {
                 const index = parseInt(target.dataset.index, 10); if (!isNaN(index) && index >= 0 && index < characters.length) { currentCharacterIndex = index; displayCharacter(); }
             }
         }
-        function enterFullscreen() { /* ... (no changes) ... */
-             const elem = document.getElementById('mainContentArea') || document.documentElement;
-            if (elem.requestFullscreen) elem.requestFullscreen().catch(err => console.error(`Fullscreen error: ${err.message} (${err.name})`));
-            else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen(); else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
+
+        // Function to request fullscreen mode - **MODIFIED**
+        function enterFullscreen() {
+            // 请求整个文档进入全屏，而不是仅仅是主要内容区域
+            // Request fullscreen on the entire document element
+            const elem = document.documentElement;
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen().catch(err => console.error(`全屏模式错误 (Fullscreen error): ${err.message} (${err.name})`));
+            } else if (elem.webkitRequestFullscreen) { /* Safari */
+                elem.webkitRequestFullscreen();
+            } else if (elem.msRequestFullscreen) { /* IE11 */
+                elem.msRequestFullscreen();
+            }
+            // Also added a background color to #mainContentArea in CSS as a fallback
         }
 
-        // Function to enable/disable Prev button based on checkbox
-        function togglePrevButton() {
-             prevBtn.disabled = randomCheckbox.checked;
-        }
+        function togglePrevButton() { /* ... (no changes) ... */ prevBtn.disabled = randomCheckbox.checked; }
 
-        // --- Event Listeners ---
+        // --- Event Listeners --- /* ... (no changes) ... */
         canvas.addEventListener('mousedown', startDrawing); canvas.addEventListener('mousemove', draw); canvas.addEventListener('mouseup', stopDrawing); canvas.addEventListener('mouseout', stopDrawing);
         canvas.addEventListener('touchstart', startDrawing, { passive: false }); canvas.addEventListener('touchmove', draw, { passive: false }); canvas.addEventListener('touchend', stopDrawing, { passive: false }); canvas.addEventListener('touchcancel', stopDrawing, { passive: false });
-        clearBtn.addEventListener('click', clearCanvas);
-        prevBtn.addEventListener('click', previousCharacter); // Add listener for Prev button
-        nextBtn.addEventListener('click', nextCharacter);
-        fullscreenBtn.addEventListener('click', enterFullscreen);
-        tocListContainer.addEventListener('click', handleTocClick);
-        randomCheckbox.addEventListener('change', togglePrevButton); // Add listener for checkbox change
+        clearBtn.addEventListener('click', clearCanvas); prevBtn.addEventListener('click', previousCharacter); nextBtn.addEventListener('click', nextCharacter); fullscreenBtn.addEventListener('click', enterFullscreen);
+        tocListContainer.addEventListener('click', handleTocClick); randomCheckbox.addEventListener('change', togglePrevButton);
         window.addEventListener('resize', resizeCanvas);
 
         // --- Initialization ---
@@ -250,7 +237,7 @@
         togglePrevButton(); // Set initial state of Prev button
 
         // --- Safety Note ---
-        console.log("Tip: For the best 'locked-in' experience on iPad, use 'Guided Access' in Settings > Accessibility.");
+        console.log("提示：为了在iPad上获得最佳的“锁定”体验，请在 设置 > 辅助功能 中使用“引导式访问”功能。(Tip: For the best 'locked-in' experience on iPad, use 'Guided Access' in Settings > Accessibility.)");
 
     </script>
 </body>
