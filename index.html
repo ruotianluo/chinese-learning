@@ -24,32 +24,35 @@
 
         /* Main Content Area */
         #mainContentArea {
-            flex-grow: 1;
+            flex-grow: 1; display: flex; flex-direction: column; align-items: center;
+            padding: 1rem; height: 100%; overflow-y: auto; background-color: #f0f9ff;
+        }
+        #mainContentArea:fullscreen { background-color: #f0f9ff; }
+        #mainContentArea:-webkit-full-screen { background-color: #f0f9ff; }
+        #mainContentArea:-moz-full-screen { background-color: #f0f9ff; }
+        #mainContentArea:-ms-fullscreen { background-color: #f0f9ff; }
+
+        /* Container for Animation and Quiz */
+        .writer-container {
             display: flex;
+            /* Default: Stack vertically */
             flex-direction: column;
-            align-items: center;
-            padding: 1rem;
-            height: 100%;
-            overflow-y: auto;
-            background-color: #f0f9ff; /* Added background color */
+            align-items: center; /* Center items horizontally when stacked */
+            gap: 1rem;
+            width: 100%;
+            /* Allow container to take reasonable width when stacked */
+            max-width: 450px;
+            margin-bottom: 1rem;
+            flex-shrink: 0;
         }
-        /* Style adjustments specifically for fullscreen */
-        #mainContentArea:fullscreen {
-             background-color: #f0f9ff; /* Ensure background persists in fullscreen */
-             /* Optionally add more padding or adjustments for fullscreen */
-             /* padding: 2rem; */
-        }
-         #mainContentArea:-webkit-full-screen { background-color: #f0f9ff; }
-         #mainContentArea:-moz-full-screen { background-color: #f0f9ff; }
-         #mainContentArea:-ms-fullscreen { background-color: #f0f9ff; }
-
-
-        /* Container for Side-by-Side Animation and Quiz */
-        .writer-container { display: flex; flex-direction: row; justify-content: center; align-items: flex-start; gap: 1rem; width: 100%; max-width: 600px; margin-bottom: 1rem; flex-shrink: 0; }
 
         /* Individual Hanzi Writer Target Containers */
         .hanzi-target {
-            flex: 1; max-width: 250px; height: auto; aspect-ratio: 1 / 1;
+            width: 100%; /* Take full width of parent when stacked */
+            /* Maintain max-width for sanity */
+            max-width: 400px;
+            height: auto;
+            aspect-ratio: 1 / 1;
             border: 2px solid #e5e7eb; border-radius: 0.75rem; overflow: hidden;
             background-color: white; box-shadow: 0 5px 10px rgba(0, 0, 0, 0.08);
             position: relative;
@@ -60,19 +63,32 @@
         /* Mizige Grid using CSS Background on the Quiz Target */
         #quizTarget {
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M0 50 H100 M50 0 V100 M0 0 L100 100 M100 0 L0 100' stroke='%23e5e7eb' stroke-width='1' stroke-dasharray='3 3'/%3E%3C/svg%3E");
-            background-size: 100% 100%;
-            background-repeat: no-repeat;
+            background-size: 100% 100%; background-repeat: no-repeat;
         }
 
-        /* Buttons */
-        .control-button { /* Base styles for all buttons, including the link */
-            display: inline-block; padding: 0.8rem 1.5rem; font-size: 1.2rem; font-weight: bold; color: white; background-color: #3b82f6; border: none; border-radius: 0.75rem; cursor: pointer; text-align: center; text-decoration: none; transition: background-color 0.3s ease, opacity 0.3s ease; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        /* Media Query for wider/landscape screens */
+        /* Using aspect ratio - adjust threshold if needed */
+        @media (min-aspect-ratio: 1/1) and (min-width: 768px) {
+             .writer-container {
+                 /* Switch to side-by-side on wide screens */
+                 flex-direction: row;
+                 align-items: flex-start; /* Align tops */
+                 max-width: 600px; /* Adjust max width for side-by-side */
+             }
+             .hanzi-target {
+                 flex: 1; /* Allow flex sizing */
+                 /* Reset width, rely on flex and max-width */
+                 width: auto;
+                 max-width: 250px; /* Smaller max-width when side-by-side */
+             }
         }
+
+
+        /* Buttons */
+        .control-button { display: inline-block; padding: 0.8rem 1.5rem; font-size: 1.2rem; font-weight: bold; color: white; background-color: #3b82f6; border: none; border-radius: 0.75rem; cursor: pointer; text-align: center; text-decoration: none; transition: background-color 0.3s ease, opacity 0.3s ease; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
         .control-button:hover:not(:disabled) { background-color: #2563eb; }
         .control-button:active:not(:disabled) { background-color: #1d4ed8; transform: translateY(1px); }
         .control-button:disabled { background-color: #9ca3af; opacity: 0.7; cursor: not-allowed; }
-
-        /* Specific Button Colors */
         #fullscreenBtn { background-color: #10b981; } #fullscreenBtn:hover:not(:disabled) { background-color: #059669; } #fullscreenBtn:active:not(:disabled) { background-color: #047857; }
         #prevBtn { background-color: #f59e0b; } #prevBtn:hover:not(:disabled) { background-color: #d97706; } #prevBtn:active:not(:disabled) { background-color: #b45309; }
         #clearBtn { background-color: #ef4444; } #clearBtn:hover:not(:disabled) { background-color: #dc2626; } #clearBtn:active:not(:disabled) { background-color: #b91c1c; }
@@ -186,7 +202,10 @@
 
             // --- Configure Animation Writer ---
             animationTargetDiv.innerHTML = '';
-            const animationOptions = { width: animationTargetDiv.clientWidth, height: animationTargetDiv.clientHeight, padding: 5, showOutline: false, showCharacter: true, strokeAnimationSpeed: 1, delayBetweenStrokes: 200, strokeColor: '#333' };
+            // Ensure the target div has dimensions before creating
+            const animWidth = animationTargetDiv.clientWidth || 200; // Fallback size
+            const animHeight = animationTargetDiv.clientHeight || 200;
+            const animationOptions = { width: animWidth, height: animHeight, padding: 5, showOutline: false, showCharacter: true, strokeAnimationSpeed: 1, delayBetweenStrokes: 200, strokeColor: '#333' };
             try {
                  animationWriter = HanziWriter.create(animationTargetDiv, character, animationOptions);
                  animationWriter.animateCharacter();
@@ -194,7 +213,9 @@
 
             // --- Configure Quiz Writer ---
             quizTargetDiv.innerHTML = ''; // Clear target div (CSS background will remain)
-            const quizOptions = { width: quizTargetDiv.clientWidth, height: quizTargetDiv.clientHeight, padding: 5, showOutline: true, showCharacter: false, strokeColor: '#166534', outlineColor: '#DDD', highlightOnComplete: true, highlightColor: '#86efac', strokeMistakeTolerance: 0.1, quizStartStrokeColor: '#AAA' };
+            const quizWidth = quizTargetDiv.clientWidth || 200; // Fallback size
+            const quizHeight = quizTargetDiv.clientHeight || 200;
+            const quizOptions = { width: quizWidth, height: quizHeight, padding: 5, showOutline: true, showCharacter: false, strokeColor: '#166534', outlineColor: '#DDD', highlightOnComplete: true, highlightColor: '#86efac', strokeMistakeTolerance: 0.1, quizStartStrokeColor: '#AAA' };
             try {
                  quizWriter = HanziWriter.create(quizTargetDiv, character, quizOptions);
                  quizWriter.quiz({
@@ -237,11 +258,6 @@
                  elem.msRequestFullscreen();
              } else {
                  console.warn("Fullscreen API not fully supported by this browser.");
-                 // Fallback? Maybe try documentElement again?
-                 // const rootElem = document.documentElement;
-                 // if (rootElem.requestFullscreen) rootElem.requestFullscreen().catch(err => console.error(`Fullscreen error: ${err.message} (${err.name})`));
-                 // else if (rootElem.webkitRequestFullscreen) rootElem.webkitRequestFullscreen();
-                 // else if (rootElem.msRequestFullscreen) rootElem.msRequestFullscreen();
              }
         }
 
@@ -254,8 +270,13 @@
              console.log("Handling resize...");
              if (characters.length > 0) {
                 setTimeout(() => {
-                     displayCharacter(); // Re-calls setupHanziWriters which uses new dimensions
-                }, 100);
+                     // Make sure target divs are visible and have dimensions before setup
+                     if (animationTargetDiv.clientWidth > 0 && quizTargetDiv.clientWidth > 0) {
+                         displayCharacter(); // Re-calls setupHanziWriters which uses new dimensions
+                     } else {
+                         console.warn("Resize handler skipped: Target divs have no dimensions yet.");
+                     }
+                }, 100); // Delay slightly more?
             }
         }, 250);
 
@@ -273,15 +294,21 @@
         // --- Initialization ---
         populateTOC();
         if (characters.length > 0) {
-            displayCharacter(); // Initial display
+            // Ensure layout is stable before initial display
+            requestAnimationFrame(() => {
+                setTimeout(() => { // Add slight delay for initial render
+                     displayCharacter(); // Initial display
+                     // Set initialization flag to false after the first display completes
+                     isInitializing = false;
+                     console.log("Initialization complete.");
+                }, 100); // Adjust delay if needed
+            });
         } else {
             console.error("No characters loaded.");
+            isInitializing = false; // Still need to set this if no chars
         }
         togglePrevButton();
-        setTimeout(() => { // Set initialization flag to false after a short delay
-             isInitializing = false;
-             console.log("Initialization complete.");
-        }, 500);
+        // Removed the separate setTimeout for isInitializing flag
 
 
         // --- Safety Note ---
