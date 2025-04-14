@@ -23,7 +23,26 @@
         .toc-item.active { background-color: #3b82f6; color: white; font-weight: bold; border-color: #2563eb; }
 
         /* Main Content Area */
-        #mainContentArea { flex-grow: 1; display: flex; flex-direction: column; align-items: center; padding: 1rem; height: 100%; overflow-y: auto; }
+        #mainContentArea {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 1rem;
+            height: 100%;
+            overflow-y: auto;
+            background-color: #f0f9ff; /* Added background color */
+        }
+        /* Style adjustments specifically for fullscreen */
+        #mainContentArea:fullscreen {
+             background-color: #f0f9ff; /* Ensure background persists in fullscreen */
+             /* Optionally add more padding or adjustments for fullscreen */
+             /* padding: 2rem; */
+        }
+         #mainContentArea:-webkit-full-screen { background-color: #f0f9ff; }
+         #mainContentArea:-moz-full-screen { background-color: #f0f9ff; }
+         #mainContentArea:-ms-fullscreen { background-color: #f0f9ff; }
+
 
         /* Container for Side-by-Side Animation and Quiz */
         .writer-container { display: flex; flex-direction: row; justify-content: center; align-items: flex-start; gap: 1rem; width: 100%; max-width: 600px; margin-bottom: 1rem; flex-shrink: 0; }
@@ -47,19 +66,7 @@
 
         /* Buttons */
         .control-button { /* Base styles for all buttons, including the link */
-            display: inline-block; /* Needed for padding on <a> */
-            padding: 0.8rem 1.5rem;
-            font-size: 1.2rem;
-            font-weight: bold;
-            color: white;
-            background-color: #3b82f6; /* Default blue */
-            border: none;
-            border-radius: 0.75rem;
-            cursor: pointer;
-            text-align: center;
-            text-decoration: none; /* Remove underline from link */
-            transition: background-color 0.3s ease, opacity 0.3s ease;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: inline-block; padding: 0.8rem 1.5rem; font-size: 1.2rem; font-weight: bold; color: white; background-color: #3b82f6; border: none; border-radius: 0.75rem; cursor: pointer; text-align: center; text-decoration: none; transition: background-color 0.3s ease, opacity 0.3s ease; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
         .control-button:hover:not(:disabled) { background-color: #2563eb; }
         .control-button:active:not(:disabled) { background-color: #1d4ed8; transform: translateY(1px); }
@@ -69,11 +76,7 @@
         #fullscreenBtn { background-color: #10b981; } #fullscreenBtn:hover:not(:disabled) { background-color: #059669; } #fullscreenBtn:active:not(:disabled) { background-color: #047857; }
         #prevBtn { background-color: #f59e0b; } #prevBtn:hover:not(:disabled) { background-color: #d97706; } #prevBtn:active:not(:disabled) { background-color: #b45309; }
         #clearBtn { background-color: #ef4444; } #clearBtn:hover:not(:disabled) { background-color: #dc2626; } #clearBtn:active:not(:disabled) { background-color: #b91c1c; }
-        /* Style for the Old Version link button */
-        #oldVersionLink { background-color: #6b7280; } /* Gray */
-        #oldVersionLink:hover { background-color: #4b5563; }
-        #oldVersionLink:active { background-color: #374151; }
-
+        #oldVersionLink { background-color: #6b7280; } #oldVersionLink:hover { background-color: #4b5563; } #oldVersionLink:active { background-color: #374151; }
 
         /* Meaning/Emoji Container */
         .meaning-container { display: flex; justify-content: center; align-items: center; margin-top: 0.5rem; min-height: 70px; flex-shrink: 0; }
@@ -217,18 +220,39 @@
         function previousCharacter() { /* ... (no changes) ... */ if (characters.length === 0 || randomCheckbox.checked) return; currentCharacterIndex = (currentCharacterIndex - 1 + characters.length) % characters.length; displayCharacter(); }
         function nextCharacter() { /* ... (no changes) ... */ if (characters.length === 0) return; const isRandom = randomCheckbox.checked; let nextIndex; if (isRandom) { if (characters.length <= 1) nextIndex = 0; else do { nextIndex = Math.floor(Math.random() * characters.length); } while (nextIndex === currentCharacterIndex); } else { nextIndex = (currentCharacterIndex + 1) % characters.length; } currentCharacterIndex = nextIndex; displayCharacter(); }
         function handleTocClick(event) { /* ... (no changes) ... */ const target = event.target; if (target.classList.contains('toc-item') && target.dataset.index !== undefined) { const index = parseInt(target.dataset.index, 10); if (!isNaN(index) && index >= 0 && index < characters.length) { currentCharacterIndex = index; displayCharacter(); } } }
-        function enterFullscreen() { /* ... (no changes) ... */ const elem = document.getElementById('mainContentArea') || document.documentElement; if (elem.requestFullscreen) elem.requestFullscreen().catch(err => console.error(`Fullscreen error: ${err.message} (${err.name})`)); else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen(); else if (elem.msRequestFullscreen) elem.msRequestFullscreen(); }
+
+        // Updated fullscreen function to target main content area
+        function enterFullscreen() {
+             const elem = document.getElementById('mainContentArea'); // Target specific area
+             if (!elem) {
+                 console.error("Fullscreen target #mainContentArea not found.");
+                 return; // Exit if target not found
+             }
+
+             if (elem.requestFullscreen) {
+                 elem.requestFullscreen().catch(err => console.error(`Fullscreen error: ${err.message} (${err.name})`));
+             } else if (elem.webkitRequestFullscreen) { /* Safari */
+                 elem.webkitRequestFullscreen();
+             } else if (elem.msRequestFullscreen) { /* IE11 */
+                 elem.msRequestFullscreen();
+             } else {
+                 console.warn("Fullscreen API not fully supported by this browser.");
+                 // Fallback? Maybe try documentElement again?
+                 // const rootElem = document.documentElement;
+                 // if (rootElem.requestFullscreen) rootElem.requestFullscreen().catch(err => console.error(`Fullscreen error: ${err.message} (${err.name})`));
+                 // else if (rootElem.webkitRequestFullscreen) rootElem.webkitRequestFullscreen();
+                 // else if (rootElem.msRequestFullscreen) rootElem.msRequestFullscreen();
+             }
+        }
+
         function togglePrevButton() { prevBtn.disabled = randomCheckbox.checked; }
         function debounce(func, wait, immediate) { /* ... (no changes) ... */ var timeout; return function() { var context = this, args = arguments; var later = function() { timeout = null; if (!immediate) func.apply(context, args); }; var callNow = immediate && !timeout; clearTimeout(timeout); timeout = setTimeout(later, wait); if (callNow) func.apply(context, args); }; };
 
         // Updated resize handler with initialization flag check
         const handleResize = debounce(function() {
-             // Prevent running during initial load
-             if (isInitializing) return;
-
+             if (isInitializing) return; // Prevent running during initial load
              console.log("Handling resize...");
              if (characters.length > 0) {
-                // Give layout a moment to settle after resize event
                 setTimeout(() => {
                      displayCharacter(); // Re-calls setupHanziWriters which uses new dimensions
                 }, 100);
@@ -254,12 +278,10 @@
             console.error("No characters loaded.");
         }
         togglePrevButton();
-        // Set initialization flag to false after a short delay,
-        // allowing initial render/resize to settle.
-        setTimeout(() => {
+        setTimeout(() => { // Set initialization flag to false after a short delay
              isInitializing = false;
              console.log("Initialization complete.");
-        }, 500); // Adjust delay if needed
+        }, 500);
 
 
         // --- Safety Note ---
