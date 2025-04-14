@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>汉字描摹板 (Hanzi Tracing Pad)</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Noto+Sans+SC:wght@400;700&display=swap" rel="stylesheet">
@@ -22,32 +23,61 @@
         .toc-item.active { background-color: #3b82f6; color: white; font-weight: bold; border-color: #2563eb; }
 
         /* Main Content Area */
-        #mainContentArea { flex-grow: 1; display: flex; flex-direction: column; align-items: center; padding: 1rem; height: 100%; overflow-y: auto; background-color: #f0f9ff; /* 确保内容区也有背景色 */ }
+        #mainContentArea { flex-grow: 1; display: flex; flex-direction: column; align-items: center; padding: 1rem; height: 100%; overflow-y: auto; }
 
-        /* Character Display */
-        .character-display { font-family: 'Noto Sans SC', sans-serif; font-size: 15rem; line-height: 1; color: #d1d5db; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); user-select: none; z-index: 1; }
-        #drawingCanvas { position: absolute; top: 0; left: 0; cursor: crosshair; z-index: 10; touch-action: none; }
+        /* Container for Side-by-Side Animation and Quiz */
+        .writer-container { display: flex; flex-direction: row; justify-content: center; align-items: flex-start; gap: 1rem; width: 100%; max-width: 600px; margin-bottom: 1rem; flex-shrink: 0; }
+
+        /* Individual Hanzi Writer Target Containers */
+        .hanzi-target {
+            flex: 1; max-width: 250px; height: auto; aspect-ratio: 1 / 1;
+            border: 2px solid #e5e7eb; border-radius: 0.75rem; overflow: hidden;
+            background-color: white; box-shadow: 0 5px 10px rgba(0, 0, 0, 0.08);
+            position: relative;
+        }
+        /* Ensure SVG inside scales nicely */
+        .hanzi-target > svg { width: 100%; height: 100%; display: block; position: relative; z-index: 1; }
+
+        /* Mizige Grid using CSS Background on the Quiz Target */
+        #quizTarget {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M0 50 H100 M50 0 V100 M0 0 L100 100 M100 0 L0 100' stroke='%23e5e7eb' stroke-width='1' stroke-dasharray='3 3'/%3E%3C/svg%3E");
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+        }
 
         /* Buttons */
-        .control-button { padding: 0.8rem 1.5rem; font-size: 1.2rem; font-weight: bold; color: white; background-color: #3b82f6; border: none; border-radius: 0.75rem; cursor: pointer; transition: background-color 0.3s ease, opacity 0.3s ease; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+        .control-button { /* Base styles for all buttons, including the link */
+            display: inline-block; /* Needed for padding on <a> */
+            padding: 0.8rem 1.5rem;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: white;
+            background-color: #3b82f6; /* Default blue */
+            border: none;
+            border-radius: 0.75rem;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none; /* Remove underline from link */
+            transition: background-color 0.3s ease, opacity 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
         .control-button:hover:not(:disabled) { background-color: #2563eb; }
         .control-button:active:not(:disabled) { background-color: #1d4ed8; transform: translateY(1px); }
         .control-button:disabled { background-color: #9ca3af; opacity: 0.7; cursor: not-allowed; }
 
-        #fullscreenBtn { background-color: #10b981; }
-        #fullscreenBtn:hover:not(:disabled) { background-color: #059669; }
-        #fullscreenBtn:active:not(:disabled) { background-color: #047857; }
-        #prevBtn { background-color: #f59e0b; }
-        #prevBtn:hover:not(:disabled) { background-color: #d97706; }
-        #prevBtn:active:not(:disabled) { background-color: #b45309; }
+        /* Specific Button Colors */
+        #fullscreenBtn { background-color: #10b981; } #fullscreenBtn:hover:not(:disabled) { background-color: #059669; } #fullscreenBtn:active:not(:disabled) { background-color: #047857; }
+        #prevBtn { background-color: #f59e0b; } #prevBtn:hover:not(:disabled) { background-color: #d97706; } #prevBtn:active:not(:disabled) { background-color: #b45309; }
+        #clearBtn { background-color: #ef4444; } #clearBtn:hover:not(:disabled) { background-color: #dc2626; } #clearBtn:active:not(:disabled) { background-color: #b91c1c; }
+        /* Style for the Old Version link button */
+        #oldVersionLink { background-color: #6b7280; } /* Gray */
+        #oldVersionLink:hover { background-color: #4b5563; }
+        #oldVersionLink:active { background-color: #374151; }
 
-
-        /* Drawing Area Container */
-        .main-container { position: relative; width: 100%; height: 55vh; max-width: 550px; margin: 0 auto 1rem auto; border: 2px solid #e5e7eb; border-radius: 0.75rem; overflow: hidden; background-color: white; box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1); flex-shrink: 0; }
 
         /* Meaning/Emoji Container */
-        .meaning-container { display: flex; justify-content: center; align-items: center; margin-top: 1rem; min-height: 80px; flex-shrink: 0; }
-        #meaningEmoji { font-size: 4rem; line-height: 1; }
+        .meaning-container { display: flex; justify-content: center; align-items: center; margin-top: 0.5rem; min-height: 70px; flex-shrink: 0; }
+        #meaningEmoji { font-size: 3.5rem; line-height: 1; }
 
         /* Controls Container */
         .controls-container { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 1rem; margin-top: 1rem; padding: 0 1rem; width: 100%; flex-shrink: 0; }
@@ -64,24 +94,25 @@
 
     <div class="layout-container">
         <div id="tocContainer">
-            <div id="tocList" class="toc-list">
-                </div>
+            <div id="tocList" class="toc-list"></div>
         </div>
 
         <div id="mainContentArea">
-            <div id="canvasContainer" class="main-container">
-                <div id="characterDisplay" class="character-display"></div>
-                <canvas id="drawingCanvas"></canvas>
+            <div class="writer-container">
+                <div id="animationTarget" class="hanzi-target"></div>
+                <div id="quizTarget" class="hanzi-target"></div>
             </div>
 
             <div class="meaning-container">
-                <span id="meaningEmoji" aria-hidden="true"></span> </div>
+                <span id="meaningEmoji" aria-hidden="true"></span>
+            </div>
 
             <div class="controls-container">
-                <button id="clearBtn" class="control-button">清除 (Clear)</button>
+                <button id="clearBtn" class="control-button">重试 (Retry)</button>
                 <button id="prevBtn" class="control-button">上一个 (Prev)</button>
                 <button id="nextBtn" class="control-button">下一个 (Next)</button>
                 <button id="fullscreenBtn" class="control-button">全屏 (Fullscreen)</button>
+                 <a href="./index_old.html" id="oldVersionLink" class="control-button">Old Version</a>
                 <div class="checkbox-container">
                     <input type="checkbox" id="randomCheckbox">
                     <label for="randomCheckbox">随机顺序 (Random Order)</label>
@@ -111,133 +142,128 @@
             { char: '好', pinyin: 'hǎo', meaning: 'good / well', emoji: '👍' }, { char: '不', pinyin: 'bù', meaning: 'not / no', emoji: '🚫' }, { char: '多', pinyin: 'duō', meaning: 'many / much', emoji: '➕' }, { char: '少', pinyin: 'shǎo', meaning: 'few / little', emoji: '➖' }, { char: '高', pinyin: 'gāo', meaning: 'high / tall', emoji: '🦒' }, { char: '长', pinyin: 'cháng', meaning: 'long', emoji: '📏' }, { char: '红', pinyin: 'hóng', meaning: 'red', emoji: '🟥' }, { char: '白', pinyin: 'bái', meaning: 'white', emoji: '⬜' }, { char: '黑', pinyin: 'hēi', meaning: 'black', emoji: '⬛' }, { char: '黄', pinyin: 'huáng', meaning: 'yellow', emoji: '🟨' }, { char: '绿', pinyin: 'lǜ', meaning: 'green', emoji: '🟩' }, { char: '蓝', pinyin: 'lán', meaning: 'blue', emoji: '🟦' }, { char: '开', pinyin: 'kāi', meaning: 'open / start', emoji: '🔓' }, { char: '关', pinyin: 'guān', meaning: 'close / turn off', emoji: '🔒' },
         ];
         let currentCharacterIndex = 0;
-        const drawingColor = "#000000";
-        const drawingLineWidth = 18;
+        const encouragementPhrase = "你写的真棒!";
 
-        // --- Canvas and Context ---
-        const canvasContainer = document.getElementById('canvasContainer');
-        const canvas = document.getElementById('drawingCanvas');
-        const ctx = canvas.getContext('2d');
-        let isDrawing = false;
-        let lastX = 0;
-        let lastY = 0;
+        // --- Hanzi Writer Instances ---
+        let animationWriter = null;
+        let quizWriter = null;
+        const animationTargetDiv = document.getElementById('animationTarget');
+        const quizTargetDiv = document.getElementById('quizTarget');
 
         // --- DOM Elements ---
         const tocListContainer = document.getElementById('tocList');
-        const characterDisplay = document.getElementById('characterDisplay');
         const meaningEmoji = document.getElementById('meaningEmoji');
-        const clearBtn = document.getElementById('clearBtn');
+        const clearBtn = document.getElementById('clearBtn'); // Retry button
         const prevBtn = document.getElementById('prevBtn');
         const nextBtn = document.getElementById('nextBtn');
         const fullscreenBtn = document.getElementById('fullscreenBtn');
         const randomCheckbox = document.getElementById('randomCheckbox');
+        // No need for oldVersionLink element reference in JS
+
+        // --- State Flags ---
+        let isInitializing = true; // Flag to prevent initial double-calls
 
         // --- Speech Synthesis ---
         const synth = window.speechSynthesis;
         let voices = [];
-        function populateVoiceList() { /* ... (no changes) ... */
-            if(typeof speechSynthesis === 'undefined') { console.warn("语音合成不支持 (Speech Synthesis not supported)."); return; }
-            voices = synth.getVoices().filter(voice => voice.lang.startsWith('zh'));
-            if (voices.length === 0 && synth.onvoiceschanged !== undefined) {
-                synth.onvoiceschanged = () => { voices = synth.getVoices().filter(voice => voice.lang.startsWith('zh')); console.log("语音库已加载 (Voices loaded):", voices); };
-            } else { console.log("找到中文语音库 (Chinese voices found):", voices); }
-        }
+        function populateVoiceList() { /* ... (no changes) ... */ if(typeof speechSynthesis === 'undefined') { console.warn("Speech Synthesis not supported."); return; } voices = synth.getVoices().filter(voice => voice.lang.startsWith('zh')); if (voices.length === 0 && synth.onvoiceschanged !== undefined) { synth.onvoiceschanged = () => { voices = synth.getVoices().filter(voice => voice.lang.startsWith('zh')); console.log("Voices loaded:", voices); }; } else { console.log("Chinese voices found:", voices); } }
         populateVoiceList();
         if (typeof speechSynthesis !== 'undefined' && speechSynthesis.onvoiceschanged !== undefined) { speechSynthesis.onvoiceschanged = populateVoiceList; }
-        function speakCharacter(character) { /* ... (no changes) ... */
-            if (!synth) return; if (synth.speaking) synth.cancel();
-            if (character !== '') {
-                const utterThis = new SpeechSynthesisUtterance(character);
-                utterThis.onerror = (event) => console.error('语音合成错误 (SpeechSynthesisUtterance.onerror)', event);
-                const chineseVoice = voices.find(voice => voice.lang === 'zh-CN') || voices.find(voice => voice.lang.startsWith('zh'));
-                if (chineseVoice) utterThis.voice = chineseVoice; else utterThis.lang = 'zh-CN';
-                utterThis.pitch = 1; utterThis.rate = 0.8;
-                setTimeout(() => synth.speak(utterThis), 50);
-            }
-        }
+        function speak(textToSpeak, langCode = 'zh-CN', interrupt = false) { /* ... (no changes) ... */ if (!synth) { console.warn("Speech Synthesis not available."); return; } if (interrupt && synth.speaking) { synth.cancel(); } if (!interrupt && synth.speaking) { console.log("Speech synthesis is busy."); return; } if (textToSpeak !== '') { const utterThis = new SpeechSynthesisUtterance(textToSpeak); utterThis.onerror = (event) => console.error('SpeechSynthesisUtterance.onerror', event); const voice = voices.find(v => v.lang === langCode) || voices.find(v => v.lang.startsWith(langCode.split('-')[0])); if (voice) { utterThis.voice = voice; } else { utterThis.lang = langCode; console.warn(`No specific voice found for ${langCode}, using default.`); } utterThis.pitch = 1; utterThis.rate = 0.8; setTimeout(() => synth.speak(utterThis), 50); } }
+        function playEncouragement() { speak(encouragementPhrase, 'zh-CN', false); }
 
         // --- Functions ---
 
-        function populateTOC() { /* ... (no changes) ... */
-            tocListContainer.innerHTML = ''; characters.forEach((charData, index) => {
-                const tocItem = document.createElement('div'); tocItem.classList.add('toc-item');
-                tocItem.textContent = charData.char; tocItem.dataset.index = index;
-                tocListContainer.appendChild(tocItem);
-            });
+        function populateTOC() { /* ... (no changes) ... */ tocListContainer.innerHTML = ''; characters.forEach((charData, index) => { const tocItem = document.createElement('div'); tocItem.classList.add('toc-item'); tocItem.textContent = charData.char; tocItem.dataset.index = index; tocListContainer.appendChild(tocItem); }); }
+        function updateTocHighlight() { /* ... (no changes) ... */ const previousActive = tocListContainer.querySelector('.toc-item.active'); if (previousActive) previousActive.classList.remove('active'); const currentActive = tocListContainer.querySelector(`.toc-item[data-index="${currentCharacterIndex}"]`); if (currentActive) { currentActive.classList.add('active'); currentActive.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } }
+
+        // Updated function to initialize or update Hanzi Writer instances
+        function setupHanziWriters(character) {
+            if (!HanziWriter) { console.error("Hanzi Writer library not loaded!"); return; }
+
+            // --- Configure Animation Writer ---
+            animationTargetDiv.innerHTML = '';
+            const animationOptions = { width: animationTargetDiv.clientWidth, height: animationTargetDiv.clientHeight, padding: 5, showOutline: false, showCharacter: true, strokeAnimationSpeed: 1, delayBetweenStrokes: 200, strokeColor: '#333' };
+            try {
+                 animationWriter = HanziWriter.create(animationTargetDiv, character, animationOptions);
+                 animationWriter.animateCharacter();
+            } catch (error) { console.error("Error creating Animation Writer:", error); animationTargetDiv.innerHTML = '<p class="text-red-500 text-center p-2">Error</p>'; }
+
+            // --- Configure Quiz Writer ---
+            quizTargetDiv.innerHTML = ''; // Clear target div (CSS background will remain)
+            const quizOptions = { width: quizTargetDiv.clientWidth, height: quizTargetDiv.clientHeight, padding: 5, showOutline: true, showCharacter: false, strokeColor: '#166534', outlineColor: '#DDD', highlightOnComplete: true, highlightColor: '#86efac', strokeMistakeTolerance: 0.1, quizStartStrokeColor: '#AAA' };
+            try {
+                 quizWriter = HanziWriter.create(quizTargetDiv, character, quizOptions);
+                 quizWriter.quiz({
+                     onComplete: function(summaryData) {
+                         console.log('Quiz Complete!', summaryData);
+                         playEncouragement(); // Play encouragement regardless of mistakes
+                     }
+                 });
+            } catch (error) { console.error("Error creating Quiz Writer:", error); quizTargetDiv.innerHTML = '<p class="text-red-500 text-center p-2">Error</p>'; }
         }
-        function updateTocHighlight() { /* ... (no changes) ... */
-            const previousActive = tocListContainer.querySelector('.toc-item.active'); if (previousActive) previousActive.classList.remove('active');
-            const currentActive = tocListContainer.querySelector(`.toc-item[data-index="${currentCharacterIndex}"]`);
-            if (currentActive) { currentActive.classList.add('active'); currentActive.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+
+        // Updated function to display character using Hanzi Writers
+        function displayCharacter() {
+             if (currentCharacterIndex < 0 || currentCharacterIndex >= characters.length) { console.error("Invalid index:", currentCharacterIndex); currentCharacterIndex = 0; if (characters.length === 0) return; }
+             const currentCharData = characters[currentCharacterIndex];
+             meaningEmoji.textContent = currentCharData.emoji || '';
+             setupHanziWriters(currentCharData.char);
+             speak(currentCharData.char, 'zh-CN', true);
+             updateTocHighlight();
         }
-        function resizeCanvas() { /* ... (no changes) ... */
-            const containerRect = canvasContainer.getBoundingClientRect(); canvas.width = containerRect.width; canvas.height = containerRect.height;
-            ctx.strokeStyle = drawingColor; ctx.lineWidth = drawingLineWidth; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-            if (characters.length > 0) { displayCharacter(); }
-        }
-        function displayCharacter() { /* ... (no changes) ... */
-            if (currentCharacterIndex < 0 || currentCharacterIndex >= characters.length) { console.error("无效索引 (Invalid index):", currentCharacterIndex); currentCharacterIndex = 0; if (characters.length === 0) return; }
-            const currentCharData = characters[currentCharacterIndex]; characterDisplay.textContent = currentCharData.char;
-            meaningEmoji.textContent = currentCharData.emoji || ''; clearCanvas(); speakCharacter(currentCharData.char); updateTocHighlight();
-        }
-        function clearCanvas() { /* ... (no changes) ... */ ctx.clearRect(0, 0, canvas.width, canvas.height); }
-        function startDrawing(e) { /* ... (no changes) ... */ isDrawing = true; const pos = getMousePos(canvas, e); if (!pos) return; [lastX, lastY] = [pos.x, pos.y]; ctx.beginPath(); ctx.moveTo(lastX, lastY); e.preventDefault(); }
-        function draw(e) { /* ... (no changes) ... */ if (!isDrawing) return; const pos = getMousePos(canvas, e); if (!pos) return; ctx.lineTo(pos.x, pos.y); ctx.stroke(); [lastX, lastY] = [pos.x, pos.y]; e.preventDefault(); }
-        function stopDrawing(e) { /* ... (no changes) ... */ if (isDrawing) isDrawing = false; e.preventDefault(); }
-        function getMousePos(canvasDom, event) { /* ... (no changes) ... */
-            const rect = canvasDom.getBoundingClientRect(); let clientX, clientY;
-            if (event.touches && event.touches.length > 0) { clientX = event.touches[0].clientX; clientY = event.touches[0].clientY; }
-            else if (event.changedTouches && event.changedTouches.length > 0) { clientX = event.changedTouches[0].clientX; clientY = event.changedTouches[0].clientY; }
-            else if (event.clientX !== undefined) { clientX = event.clientX; clientY = event.clientY; } else { return null; }
-            return { x: clientX - rect.left, y: clientY - rect.top };
-        }
-        function previousCharacter() { /* ... (no changes) ... */
-            if (characters.length === 0 || randomCheckbox.checked) return;
-            currentCharacterIndex = (currentCharacterIndex - 1 + characters.length) % characters.length; displayCharacter();
-        }
-        function nextCharacter() { /* ... (no changes) ... */
-            if (characters.length === 0) return; const isRandom = randomCheckbox.checked; let nextIndex;
-            if (isRandom) { if (characters.length <= 1) nextIndex = 0; else do { nextIndex = Math.floor(Math.random() * characters.length); } while (nextIndex === currentCharacterIndex); }
-            else { nextIndex = (currentCharacterIndex + 1) % characters.length; }
-            currentCharacterIndex = nextIndex; displayCharacter();
-        }
-        function handleTocClick(event) { /* ... (no changes) ... */
-            const target = event.target; if (target.classList.contains('toc-item') && target.dataset.index !== undefined) {
-                const index = parseInt(target.dataset.index, 10); if (!isNaN(index) && index >= 0 && index < characters.length) { currentCharacterIndex = index; displayCharacter(); }
+
+        function retryQuiz() { /* ... (no changes) ... */ if (quizWriter) { quizWriter.quiz(); } }
+        function previousCharacter() { /* ... (no changes) ... */ if (characters.length === 0 || randomCheckbox.checked) return; currentCharacterIndex = (currentCharacterIndex - 1 + characters.length) % characters.length; displayCharacter(); }
+        function nextCharacter() { /* ... (no changes) ... */ if (characters.length === 0) return; const isRandom = randomCheckbox.checked; let nextIndex; if (isRandom) { if (characters.length <= 1) nextIndex = 0; else do { nextIndex = Math.floor(Math.random() * characters.length); } while (nextIndex === currentCharacterIndex); } else { nextIndex = (currentCharacterIndex + 1) % characters.length; } currentCharacterIndex = nextIndex; displayCharacter(); }
+        function handleTocClick(event) { /* ... (no changes) ... */ const target = event.target; if (target.classList.contains('toc-item') && target.dataset.index !== undefined) { const index = parseInt(target.dataset.index, 10); if (!isNaN(index) && index >= 0 && index < characters.length) { currentCharacterIndex = index; displayCharacter(); } } }
+        function enterFullscreen() { /* ... (no changes) ... */ const elem = document.getElementById('mainContentArea') || document.documentElement; if (elem.requestFullscreen) elem.requestFullscreen().catch(err => console.error(`Fullscreen error: ${err.message} (${err.name})`)); else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen(); else if (elem.msRequestFullscreen) elem.msRequestFullscreen(); }
+        function togglePrevButton() { prevBtn.disabled = randomCheckbox.checked; }
+        function debounce(func, wait, immediate) { /* ... (no changes) ... */ var timeout; return function() { var context = this, args = arguments; var later = function() { timeout = null; if (!immediate) func.apply(context, args); }; var callNow = immediate && !timeout; clearTimeout(timeout); timeout = setTimeout(later, wait); if (callNow) func.apply(context, args); }; };
+
+        // Updated resize handler with initialization flag check
+        const handleResize = debounce(function() {
+             // Prevent running during initial load
+             if (isInitializing) return;
+
+             console.log("Handling resize...");
+             if (characters.length > 0) {
+                // Give layout a moment to settle after resize event
+                setTimeout(() => {
+                     displayCharacter(); // Re-calls setupHanziWriters which uses new dimensions
+                }, 100);
             }
-        }
+        }, 250);
 
-        // Function to request fullscreen mode - **MODIFIED**
-        function enterFullscreen() {
-            // 请求整个文档进入全屏，而不是仅仅是主要内容区域
-            // Request fullscreen on the entire document element
-            const elem = document.documentElement;
-            if (elem.requestFullscreen) {
-                elem.requestFullscreen().catch(err => console.error(`全屏模式错误 (Fullscreen error): ${err.message} (${err.name})`));
-            } else if (elem.webkitRequestFullscreen) { /* Safari */
-                elem.webkitRequestFullscreen();
-            } else if (elem.msRequestFullscreen) { /* IE11 */
-                elem.msRequestFullscreen();
-            }
-            // Also added a background color to #mainContentArea in CSS as a fallback
-        }
 
-        function togglePrevButton() { /* ... (no changes) ... */ prevBtn.disabled = randomCheckbox.checked; }
-
-        // --- Event Listeners --- /* ... (no changes) ... */
-        canvas.addEventListener('mousedown', startDrawing); canvas.addEventListener('mousemove', draw); canvas.addEventListener('mouseup', stopDrawing); canvas.addEventListener('mouseout', stopDrawing);
-        canvas.addEventListener('touchstart', startDrawing, { passive: false }); canvas.addEventListener('touchmove', draw, { passive: false }); canvas.addEventListener('touchend', stopDrawing, { passive: false }); canvas.addEventListener('touchcancel', stopDrawing, { passive: false });
-        clearBtn.addEventListener('click', clearCanvas); prevBtn.addEventListener('click', previousCharacter); nextBtn.addEventListener('click', nextCharacter); fullscreenBtn.addEventListener('click', enterFullscreen);
-        tocListContainer.addEventListener('click', handleTocClick); randomCheckbox.addEventListener('change', togglePrevButton);
-        window.addEventListener('resize', resizeCanvas);
+        // --- Event Listeners ---
+        clearBtn.addEventListener('click', retryQuiz);
+        prevBtn.addEventListener('click', previousCharacter);
+        nextBtn.addEventListener('click', nextCharacter);
+        fullscreenBtn.addEventListener('click', enterFullscreen);
+        tocListContainer.addEventListener('click', handleTocClick);
+        randomCheckbox.addEventListener('change', togglePrevButton);
+        window.addEventListener('resize', handleResize);
+        // No listener needed for the simple link button
 
         // --- Initialization ---
         populateTOC();
-        resizeCanvas(); // Calls displayCharacter
-        togglePrevButton(); // Set initial state of Prev button
+        if (characters.length > 0) {
+            displayCharacter(); // Initial display
+        } else {
+            console.error("No characters loaded.");
+        }
+        togglePrevButton();
+        // Set initialization flag to false after a short delay,
+        // allowing initial render/resize to settle.
+        setTimeout(() => {
+             isInitializing = false;
+             console.log("Initialization complete.");
+        }, 500); // Adjust delay if needed
+
 
         // --- Safety Note ---
-        console.log("提示：为了在iPad上获得最佳的“锁定”体验，请在 设置 > 辅助功能 中使用“引导式访问”功能。(Tip: For the best 'locked-in' experience on iPad, use 'Guided Access' in Settings > Accessibility.)");
+        console.log("Tip: For the best 'locked-in' experience on iPad, use 'Guided Access' in Settings > Accessibility.");
 
     </script>
 </body>
