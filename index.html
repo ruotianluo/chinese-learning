@@ -67,22 +67,10 @@
         }
 
         /* Media Query for wider/landscape screens */
-        /* Using aspect ratio - adjust threshold if needed */
         @media (min-aspect-ratio: 1/1) and (min-width: 768px) {
-             .writer-container {
-                 /* Switch to side-by-side on wide screens */
-                 flex-direction: row;
-                 align-items: flex-start; /* Align tops */
-                 max-width: 600px; /* Adjust max width for side-by-side */
-             }
-             .hanzi-target {
-                 flex: 1; /* Allow flex sizing */
-                 /* Reset width, rely on flex and max-width */
-                 width: auto;
-                 max-width: 250px; /* Smaller max-width when side-by-side */
-             }
+             .writer-container { flex-direction: row; align-items: flex-start; max-width: 600px; }
+             .hanzi-target { flex: 1; width: auto; max-width: 250px; }
         }
-
 
         /* Buttons */
         .control-button { display: inline-block; padding: 0.8rem 1.5rem; font-size: 1.2rem; font-weight: bold; color: white; background-color: #3b82f6; border: none; border-radius: 0.75rem; cursor: pointer; text-align: center; text-decoration: none; transition: background-color 0.3s ease, opacity 0.3s ease; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
@@ -188,8 +176,36 @@
         function populateVoiceList() { /* ... (no changes) ... */ if(typeof speechSynthesis === 'undefined') { console.warn("Speech Synthesis not supported."); return; } voices = synth.getVoices().filter(voice => voice.lang.startsWith('zh')); if (voices.length === 0 && synth.onvoiceschanged !== undefined) { synth.onvoiceschanged = () => { voices = synth.getVoices().filter(voice => voice.lang.startsWith('zh')); console.log("Voices loaded:", voices); }; } else { console.log("Chinese voices found:", voices); } }
         populateVoiceList();
         if (typeof speechSynthesis !== 'undefined' && speechSynthesis.onvoiceschanged !== undefined) { speechSynthesis.onvoiceschanged = populateVoiceList; }
-        function speak(textToSpeak, langCode = 'zh-CN', interrupt = false) { /* ... (no changes) ... */ if (!synth) { console.warn("Speech Synthesis not available."); return; } if (interrupt && synth.speaking) { synth.cancel(); } if (!interrupt && synth.speaking) { console.log("Speech synthesis is busy."); return; } if (textToSpeak !== '') { const utterThis = new SpeechSynthesisUtterance(textToSpeak); utterThis.onerror = (event) => console.error('SpeechSynthesisUtterance.onerror', event); const voice = voices.find(v => v.lang === langCode) || voices.find(v => v.lang.startsWith(langCode.split('-')[0])); if (voice) { utterThis.voice = voice; } else { utterThis.lang = langCode; console.warn(`No specific voice found for ${langCode}, using default.`); } utterThis.pitch = 1; utterThis.rate = 0.8; setTimeout(() => synth.speak(utterThis), 50); } }
-        function playEncouragement() { speak(encouragementPhrase, 'zh-CN', false); }
+
+        // Updated speak function (removed check that prevented encouragement)
+        function speak(textToSpeak, langCode = 'zh-CN', interrupt = false) {
+             if (!synth) { console.warn("Speech Synthesis not available."); return; }
+             // Always cancel if interrupt is true OR if the synth is speaking (to allow encouragement over character name)
+             if (interrupt || synth.speaking) {
+                 // console.log("Cancelling existing speech for:", textToSpeak);
+                 synth.cancel();
+             }
+             // Removed the check: if (!interrupt && synth.speaking) { return; }
+
+             if (textToSpeak !== '') {
+                 const utterThis = new SpeechSynthesisUtterance(textToSpeak);
+                 utterThis.onerror = (event) => console.error('SpeechSynthesisUtterance.onerror', event);
+                 const voice = voices.find(v => v.lang === langCode) || voices.find(v => v.lang.startsWith(langCode.split('-')[0]));
+                 if (voice) { utterThis.voice = voice; } else { utterThis.lang = langCode; console.warn(`No specific voice found for ${langCode}, using default.`); }
+                 utterThis.pitch = 1; utterThis.rate = 0.8;
+                 // Use a slightly longer timeout to ensure cancel completes fully
+                 setTimeout(() => {
+                    // console.log("Speaking:", textToSpeak);
+                    synth.speak(utterThis);
+                 }, 75); // Increased timeout slightly
+             }
+        }
+
+        // Updated playEncouragement to allow interruption
+        function playEncouragement() {
+            // Set interrupt to true so encouragement reliably plays
+            speak(encouragementPhrase, 'zh-CN', true);
+        }
 
         // --- Functions ---
 
@@ -202,8 +218,7 @@
 
             // --- Configure Animation Writer ---
             animationTargetDiv.innerHTML = '';
-            // Ensure the target div has dimensions before creating
-            const animWidth = animationTargetDiv.clientWidth || 200; // Fallback size
+            const animWidth = animationTargetDiv.clientWidth || 200;
             const animHeight = animationTargetDiv.clientHeight || 200;
             const animationOptions = { width: animWidth, height: animHeight, padding: 5, showOutline: false, showCharacter: true, strokeAnimationSpeed: 1, delayBetweenStrokes: 200, strokeColor: '#333' };
             try {
@@ -212,8 +227,8 @@
             } catch (error) { console.error("Error creating Animation Writer:", error); animationTargetDiv.innerHTML = '<p class="text-red-500 text-center p-2">Error</p>'; }
 
             // --- Configure Quiz Writer ---
-            quizTargetDiv.innerHTML = ''; // Clear target div (CSS background will remain)
-            const quizWidth = quizTargetDiv.clientWidth || 200; // Fallback size
+            quizTargetDiv.innerHTML = '';
+            const quizWidth = quizTargetDiv.clientWidth || 200;
             const quizHeight = quizTargetDiv.clientHeight || 200;
             const quizOptions = { width: quizWidth, height: quizHeight, padding: 5, showOutline: true, showCharacter: false, strokeColor: '#166534', outlineColor: '#DDD', highlightOnComplete: true, highlightColor: '#86efac', strokeMistakeTolerance: 0.1, quizStartStrokeColor: '#AAA' };
             try {
@@ -233,6 +248,7 @@
              const currentCharData = characters[currentCharacterIndex];
              meaningEmoji.textContent = currentCharData.emoji || '';
              setupHanziWriters(currentCharData.char);
+             // Speak character name, allow interruption
              speak(currentCharData.char, 'zh-CN', true);
              updateTocHighlight();
         }
@@ -244,21 +260,12 @@
 
         // Updated fullscreen function to target main content area
         function enterFullscreen() {
-             const elem = document.getElementById('mainContentArea'); // Target specific area
-             if (!elem) {
-                 console.error("Fullscreen target #mainContentArea not found.");
-                 return; // Exit if target not found
-             }
-
-             if (elem.requestFullscreen) {
-                 elem.requestFullscreen().catch(err => console.error(`Fullscreen error: ${err.message} (${err.name})`));
-             } else if (elem.webkitRequestFullscreen) { /* Safari */
-                 elem.webkitRequestFullscreen();
-             } else if (elem.msRequestFullscreen) { /* IE11 */
-                 elem.msRequestFullscreen();
-             } else {
-                 console.warn("Fullscreen API not fully supported by this browser.");
-             }
+             const elem = document.getElementById('mainContentArea');
+             if (!elem) { console.error("Fullscreen target #mainContentArea not found."); return; }
+             if (elem.requestFullscreen) { elem.requestFullscreen().catch(err => console.error(`Fullscreen error: ${err.message} (${err.name})`)); }
+             else if (elem.webkitRequestFullscreen) { elem.webkitRequestFullscreen(); }
+             else if (elem.msRequestFullscreen) { elem.msRequestFullscreen(); }
+             else { console.warn("Fullscreen API not fully supported by this browser."); }
         }
 
         function togglePrevButton() { prevBtn.disabled = randomCheckbox.checked; }
@@ -266,20 +273,15 @@
 
         // Updated resize handler with initialization flag check
         const handleResize = debounce(function() {
-             if (isInitializing) return; // Prevent running during initial load
+             if (isInitializing) return;
              console.log("Handling resize...");
              if (characters.length > 0) {
                 setTimeout(() => {
-                     // Make sure target divs are visible and have dimensions before setup
-                     if (animationTargetDiv.clientWidth > 0 && quizTargetDiv.clientWidth > 0) {
-                         displayCharacter(); // Re-calls setupHanziWriters which uses new dimensions
-                     } else {
-                         console.warn("Resize handler skipped: Target divs have no dimensions yet.");
-                     }
-                }, 100); // Delay slightly more?
+                     if (animationTargetDiv.clientWidth > 0 && quizTargetDiv.clientWidth > 0) { displayCharacter(); }
+                     else { console.warn("Resize handler skipped: Target divs have no dimensions yet."); }
+                }, 100);
             }
         }, 250);
-
 
         // --- Event Listeners ---
         clearBtn.addEventListener('click', retryQuiz);
@@ -289,27 +291,22 @@
         tocListContainer.addEventListener('click', handleTocClick);
         randomCheckbox.addEventListener('change', togglePrevButton);
         window.addEventListener('resize', handleResize);
-        // No listener needed for the simple link button
 
         // --- Initialization ---
         populateTOC();
         if (characters.length > 0) {
-            // Ensure layout is stable before initial display
             requestAnimationFrame(() => {
-                setTimeout(() => { // Add slight delay for initial render
-                     displayCharacter(); // Initial display
-                     // Set initialization flag to false after the first display completes
+                setTimeout(() => {
+                     displayCharacter();
                      isInitializing = false;
                      console.log("Initialization complete.");
-                }, 100); // Adjust delay if needed
+                }, 100);
             });
         } else {
             console.error("No characters loaded.");
-            isInitializing = false; // Still need to set this if no chars
+            isInitializing = false;
         }
         togglePrevButton();
-        // Removed the separate setTimeout for isInitializing flag
-
 
         // --- Safety Note ---
         console.log("Tip: For the best 'locked-in' experience on iPad, use 'Guided Access' in Settings > Accessibility.");
