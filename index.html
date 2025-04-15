@@ -10,54 +10,104 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Noto+Sans+SC:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        /* Custom styles */
-        html, body { height: 100%; overflow: hidden; margin: 0; padding: 0; font-family: 'Inter', 'Noto Sans SC', sans-serif; background-color: #f0f9ff; }
-        body { display: flex; flex-direction: column; }
-        .layout-container { display: flex; flex-grow: 1; overflow: hidden; width: 100%; }
+        /* Custom styles - Flexbox Layout */
+        html, body {
+            height: 100%; overflow: hidden;
+            margin: 0; padding: 0; font-family: 'Inter', 'Noto Sans SC', sans-serif;
+            background-color: #f0f9ff;
+        }
+        body {
+             /* Removed flex settings from body */
+             height: 100vh; /* Ensure body takes full viewport height */
+             position: relative; /* Keep for absolute TOC if needed, though not used now */
+        }
 
-        /* TOC Sidebar */
-        #tocContainer { width: 100px; flex-shrink: 0; height: 100%; overflow-y: auto; background-color: #e0f2fe; border-right: 2px solid #bae6fd; padding: 0.5rem; }
-        .toc-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 0.5rem; }
+        /* Page Title - Now part of main content flow */
+        #pageTitle {
+             text-align: center; padding: 0.5rem 0; /* Keep top/bottom padding */
+             font-size: 1.8rem; font-weight: bold; color: #1d4ed8;
+             width: 100%;
+             max-width: 900px; /* Match controls max-width? */
+             flex-shrink: 0;
+             order: 0; /* Ensure title is at the top of mainContentArea */
+        }
+
+        /* Flex Layout Container (Holds TOC and Main Content) */
+        .layout-container {
+            display: flex; /* Use flex row for TOC and Main Content */
+            /* Removed flex-grow, height is now 100% */
+            overflow: hidden;
+            width: 100%;
+            height: 100%; /* Fill body height */
+        }
+
+        /* TOC Sidebar - Flex Item */
+        #tocContainer {
+            width: 110px;
+            flex-shrink: 0;
+            height: 100%;
+            overflow-y: auto;
+            background-color: #e0f2fe;
+            border-right: 2px solid #bae6fd;
+            padding: 0.5rem;
+        }
+        .toc-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(45px, 1fr)); gap: 0.5rem; }
         .toc-item { font-family: 'Noto Sans SC', sans-serif; font-size: 1.8rem; padding: 0.3rem; text-align: center; cursor: pointer; border-radius: 0.375rem; background-color: #ffffff; transition: background-color 0.2s ease; user-select: none; border: 1px solid #d1d5db; }
         .toc-item:hover { background-color: #bfdbfe; }
         .toc-item.active { background-color: #3b82f6; color: white; font-weight: bold; border-color: #2563eb; }
 
-        /* Main Content Area */
+        /* Main Content Area - Flex Item */
         #mainContentArea {
-            flex-grow: 1; display: flex; flex-direction: column; align-items: center;
-            padding: 1rem; height: 100%; overflow-y: auto; background-color: #f0f9ff;
+            flex-grow: 1;
+            display: flex; flex-direction: column; align-items: center; /* Center content horizontally */
+            height: 100%;
+            overflow-y: auto; /* Allow content area to scroll */
+            padding: 1rem;
+            box-sizing: border-box;
+            background-color: #f0f9ff;
         }
-        #mainContentArea:fullscreen { background-color: #f0f9ff; }
-        #mainContentArea:-webkit-full-screen { background-color: #f0f9ff; }
-        #mainContentArea:-moz-full-screen { background-color: #f0f9ff; }
-        #mainContentArea:-ms-fullscreen { background-color: #f0f9ff; }
+        /* Adjust fullscreen styles */
+        #mainContentArea:fullscreen { background-color: #f0f9ff; padding: 1rem; }
+        #mainContentArea:-webkit-full-screen { background-color: #f0f9ff; padding: 1rem; }
+        #mainContentArea:-moz-full-screen { background-color: #f0f9ff; padding: 1rem; }
+        #mainContentArea:-ms-fullscreen { background-color: #f0f9ff; padding: 1rem; }
 
-        /* Container for Animation and Quiz */
+
+        /* Meaning/Emoji Container */
+        .meaning-container {
+            display: flex; justify-content: center; align-items: center;
+            margin-bottom: 1.5rem;
+            min-height: auto; flex-shrink: 0;
+            background-color: #ffffff; border-radius: 50%;
+            width: 110px; height: 110px; padding: 0.5rem;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.1); border: 2px solid #e5e7eb;
+            order: 1; /* Comes after title */
+        }
+        #meaningEmoji { font-size: 5rem; line-height: 1; text-align: center; }
+
+         /* Container for Animation and Quiz */
         .writer-container {
             display: flex;
-            /* Default: Stack vertically */
-            flex-direction: column;
-            align-items: center; /* Center items horizontally when stacked */
-            gap: 1rem;
+            flex-direction: column; /* Default: Stack vertically */
+            align-items: center;
+            gap: 1.5rem;
             width: 100%;
-            /* Allow container to take reasonable width when stacked */
-            max-width: 450px;
-            margin-bottom: 1rem;
+            max-width: 700px;
             flex-shrink: 0;
+            order: 2; /* Comes after emoji */
         }
 
         /* Individual Hanzi Writer Target Containers */
         .hanzi-target {
-            width: 100%; /* Take full width of parent when stacked */
-            /* Maintain max-width for sanity */
-            max-width: 400px;
+            width: 100%;
+            max-width: 650px;
             height: auto;
             aspect-ratio: 1 / 1;
             border: 2px solid #e5e7eb; border-radius: 0.75rem; overflow: hidden;
-            background-color: white; box-shadow: 0 5px 10px rgba(0, 0, 0, 0.08);
+            background-color: white;
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.08);
             position: relative;
         }
-        /* Ensure SVG inside scales nicely */
         .hanzi-target > svg { width: 100%; height: 100%; display: block; position: relative; z-index: 1; }
 
         /* Mizige Grid using CSS Background on the Quiz Target */
@@ -67,9 +117,15 @@
         }
 
         /* Media Query for wider/landscape screens */
-        @media (min-aspect-ratio: 1/1) and (min-width: 768px) {
-             .writer-container { flex-direction: row; align-items: flex-start; max-width: 600px; }
-             .hanzi-target { flex: 1; width: auto; max-width: 250px; }
+        @media (min-aspect-ratio: 10/9) and (min-width: 1024px) {
+             .writer-container {
+                 flex-direction: row; align-items: flex-start;
+                 max-width: 900px;
+                 gap: 2rem;
+             }
+             .hanzi-target {
+                 flex: 1; width: auto; max-width: 400px;
+             }
         }
 
         /* Buttons */
@@ -82,36 +138,33 @@
         #clearBtn { background-color: #ef4444; } #clearBtn:hover:not(:disabled) { background-color: #dc2626; } #clearBtn:active:not(:disabled) { background-color: #b91c1c; }
         #oldVersionLink { background-color: #6b7280; } #oldVersionLink:hover { background-color: #4b5563; } #oldVersionLink:active { background-color: #374151; }
 
-        /* Meaning/Emoji Container */
-        .meaning-container { display: flex; justify-content: center; align-items: center; margin-top: 0.5rem; min-height: 70px; flex-shrink: 0; }
-        #meaningEmoji { font-size: 3.5rem; line-height: 1; }
-
         /* Controls Container */
-        .controls-container { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 1rem; margin-top: 1rem; padding: 0 1rem; width: 100%; flex-shrink: 0; }
+        .controls-container {
+            display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
+            gap: 1rem; margin-top: 1.5rem; padding: 0 1rem; width: 100%; max-width: 900px; flex-shrink: 0;
+            order: 3; /* Comes after writer container */
+        }
         .checkbox-container { display: flex; align-items: center; gap: 0.5rem; font-size: 1.1rem; color: #1f2937; }
         #randomCheckbox { width: 1.2rem; height: 1.2rem; cursor: pointer; }
 
-        /* Page Title */
-        #pageTitle { text-align: center; padding: 0.5rem 0; font-size: 1.8rem; font-weight: bold; color: #1d4ed8; width: 100%; flex-shrink: 0; }
     </style>
 </head>
 <body>
-
-    <h1 id="pageTitle">汉字描摹板</h1>
-
     <div class="layout-container">
         <div id="tocContainer">
             <div id="tocList" class="toc-list"></div>
         </div>
 
         <div id="mainContentArea">
+             <h1 id="pageTitle">汉字描摹板</h1>
+
+             <div class="meaning-container">
+                <span id="meaningEmoji" aria-hidden="true"></span>
+            </div>
+
             <div class="writer-container">
                 <div id="animationTarget" class="hanzi-target"></div>
                 <div id="quizTarget" class="hanzi-target"></div>
-            </div>
-
-            <div class="meaning-container">
-                <span id="meaningEmoji" aria-hidden="true"></span>
             </div>
 
             <div class="controls-container">
@@ -149,7 +202,10 @@
             { char: '好', pinyin: 'hǎo', meaning: 'good / well', emoji: '👍' }, { char: '不', pinyin: 'bù', meaning: 'not / no', emoji: '🚫' }, { char: '多', pinyin: 'duō', meaning: 'many / much', emoji: '➕' }, { char: '少', pinyin: 'shǎo', meaning: 'few / little', emoji: '➖' }, { char: '高', pinyin: 'gāo', meaning: 'high / tall', emoji: '🦒' }, { char: '长', pinyin: 'cháng', meaning: 'long', emoji: '📏' }, { char: '红', pinyin: 'hóng', meaning: 'red', emoji: '🟥' }, { char: '白', pinyin: 'bái', meaning: 'white', emoji: '⬜' }, { char: '黑', pinyin: 'hēi', meaning: 'black', emoji: '⬛' }, { char: '黄', pinyin: 'huáng', meaning: 'yellow', emoji: '🟨' }, { char: '绿', pinyin: 'lǜ', meaning: 'green', emoji: '🟩' }, { char: '蓝', pinyin: 'lán', meaning: 'blue', emoji: '🟦' }, { char: '开', pinyin: 'kāi', meaning: 'open / start', emoji: '🔓' }, { char: '关', pinyin: 'guān', meaning: 'close / turn off', emoji: '🔒' },
         ];
         let currentCharacterIndex = 0;
-        const encouragementPhrase = "你写的真棒!";
+        const encouragementPhrases = [ /* ... (phrase list remains the same) ... */
+            "太棒了!", "真不错!", "有进步!", "写得很好!", "继续加油!",
+            "好极了!", "真厉害!", "你真棒!", "漂亮!", "你写的真好!"
+        ];
 
         // --- Hanzi Writer Instances ---
         let animationWriter = null;
@@ -160,15 +216,14 @@
         // --- DOM Elements ---
         const tocListContainer = document.getElementById('tocList');
         const meaningEmoji = document.getElementById('meaningEmoji');
-        const clearBtn = document.getElementById('clearBtn'); // Retry button
+        const clearBtn = document.getElementById('clearBtn');
         const prevBtn = document.getElementById('prevBtn');
         const nextBtn = document.getElementById('nextBtn');
         const fullscreenBtn = document.getElementById('fullscreenBtn');
         const randomCheckbox = document.getElementById('randomCheckbox');
-        // No need for oldVersionLink element reference in JS
 
         // --- State Flags ---
-        let isInitializing = true; // Flag to prevent initial double-calls
+        let isInitializing = true;
 
         // --- Speech Synthesis ---
         const synth = window.speechSynthesis;
@@ -176,36 +231,8 @@
         function populateVoiceList() { /* ... (no changes) ... */ if(typeof speechSynthesis === 'undefined') { console.warn("Speech Synthesis not supported."); return; } voices = synth.getVoices().filter(voice => voice.lang.startsWith('zh')); if (voices.length === 0 && synth.onvoiceschanged !== undefined) { synth.onvoiceschanged = () => { voices = synth.getVoices().filter(voice => voice.lang.startsWith('zh')); console.log("Voices loaded:", voices); }; } else { console.log("Chinese voices found:", voices); } }
         populateVoiceList();
         if (typeof speechSynthesis !== 'undefined' && speechSynthesis.onvoiceschanged !== undefined) { speechSynthesis.onvoiceschanged = populateVoiceList; }
-
-        // Updated speak function (removed check that prevented encouragement)
-        function speak(textToSpeak, langCode = 'zh-CN', interrupt = false) {
-             if (!synth) { console.warn("Speech Synthesis not available."); return; }
-             // Always cancel if interrupt is true OR if the synth is speaking (to allow encouragement over character name)
-             if (interrupt || synth.speaking) {
-                 // console.log("Cancelling existing speech for:", textToSpeak);
-                 synth.cancel();
-             }
-             // Removed the check: if (!interrupt && synth.speaking) { return; }
-
-             if (textToSpeak !== '') {
-                 const utterThis = new SpeechSynthesisUtterance(textToSpeak);
-                 utterThis.onerror = (event) => console.error('SpeechSynthesisUtterance.onerror', event);
-                 const voice = voices.find(v => v.lang === langCode) || voices.find(v => v.lang.startsWith(langCode.split('-')[0]));
-                 if (voice) { utterThis.voice = voice; } else { utterThis.lang = langCode; console.warn(`No specific voice found for ${langCode}, using default.`); }
-                 utterThis.pitch = 1; utterThis.rate = 0.8;
-                 // Use a slightly longer timeout to ensure cancel completes fully
-                 setTimeout(() => {
-                    // console.log("Speaking:", textToSpeak);
-                    synth.speak(utterThis);
-                 }, 75); // Increased timeout slightly
-             }
-        }
-
-        // Updated playEncouragement to allow interruption
-        function playEncouragement() {
-            // Set interrupt to true so encouragement reliably plays
-            speak(encouragementPhrase, 'zh-CN', true);
-        }
+        function speak(textToSpeak, langCode = 'zh-CN', interrupt = false) { /* ... (no changes) ... */ if (!synth) { console.warn("Speech Synthesis not available."); return; } if (interrupt || synth.speaking) { synth.cancel(); } if (textToSpeak !== '') { const utterThis = new SpeechSynthesisUtterance(textToSpeak); utterThis.onerror = (event) => console.error('SpeechSynthesisUtterance.onerror', event); const voice = voices.find(v => v.lang === langCode) || voices.find(v => v.lang.startsWith(langCode.split('-')[0])); if (voice) { utterThis.voice = voice; } else { utterThis.lang = langCode; console.warn(`No specific voice found for ${langCode}, using default.`); } utterThis.pitch = 1; utterThis.rate = 0.8; setTimeout(() => { synth.speak(utterThis); }, 75); } }
+        function playEncouragement() { const randomIndex = Math.floor(Math.random() * encouragementPhrases.length); const phrase = encouragementPhrases[randomIndex]; speak(phrase, 'zh-CN', true); } // Allow interruption
 
         // --- Functions ---
 
@@ -218,8 +245,8 @@
 
             // --- Configure Animation Writer ---
             animationTargetDiv.innerHTML = '';
-            const animWidth = animationTargetDiv.clientWidth || 200;
-            const animHeight = animationTargetDiv.clientHeight || 200;
+            const animWidth = animationTargetDiv.clientWidth || 300;
+            const animHeight = animationTargetDiv.clientHeight || 300;
             const animationOptions = { width: animWidth, height: animHeight, padding: 5, showOutline: false, showCharacter: true, strokeAnimationSpeed: 1, delayBetweenStrokes: 200, strokeColor: '#333' };
             try {
                  animationWriter = HanziWriter.create(animationTargetDiv, character, animationOptions);
@@ -228,15 +255,15 @@
 
             // --- Configure Quiz Writer ---
             quizTargetDiv.innerHTML = '';
-            const quizWidth = quizTargetDiv.clientWidth || 200;
-            const quizHeight = quizTargetDiv.clientHeight || 200;
+            const quizWidth = quizTargetDiv.clientWidth || 300;
+            const quizHeight = quizTargetDiv.clientHeight || 300;
             const quizOptions = { width: quizWidth, height: quizHeight, padding: 5, showOutline: true, showCharacter: false, strokeColor: '#166534', outlineColor: '#DDD', highlightOnComplete: true, highlightColor: '#86efac', strokeMistakeTolerance: 0.1, quizStartStrokeColor: '#AAA' };
             try {
                  quizWriter = HanziWriter.create(quizTargetDiv, character, quizOptions);
                  quizWriter.quiz({
                      onComplete: function(summaryData) {
                          console.log('Quiz Complete!', summaryData);
-                         playEncouragement(); // Play encouragement regardless of mistakes
+                         playEncouragement(); // Play random encouragement regardless of mistakes
                      }
                  });
             } catch (error) { console.error("Error creating Quiz Writer:", error); quizTargetDiv.innerHTML = '<p class="text-red-500 text-center p-2">Error</p>'; }
@@ -248,7 +275,6 @@
              const currentCharData = characters[currentCharacterIndex];
              meaningEmoji.textContent = currentCharData.emoji || '';
              setupHanziWriters(currentCharData.char);
-             // Speak character name, allow interruption
              speak(currentCharData.char, 'zh-CN', true);
              updateTocHighlight();
         }
@@ -257,17 +283,7 @@
         function previousCharacter() { /* ... (no changes) ... */ if (characters.length === 0 || randomCheckbox.checked) return; currentCharacterIndex = (currentCharacterIndex - 1 + characters.length) % characters.length; displayCharacter(); }
         function nextCharacter() { /* ... (no changes) ... */ if (characters.length === 0) return; const isRandom = randomCheckbox.checked; let nextIndex; if (isRandom) { if (characters.length <= 1) nextIndex = 0; else do { nextIndex = Math.floor(Math.random() * characters.length); } while (nextIndex === currentCharacterIndex); } else { nextIndex = (currentCharacterIndex + 1) % characters.length; } currentCharacterIndex = nextIndex; displayCharacter(); }
         function handleTocClick(event) { /* ... (no changes) ... */ const target = event.target; if (target.classList.contains('toc-item') && target.dataset.index !== undefined) { const index = parseInt(target.dataset.index, 10); if (!isNaN(index) && index >= 0 && index < characters.length) { currentCharacterIndex = index; displayCharacter(); } } }
-
-        // Updated fullscreen function to target main content area
-        function enterFullscreen() {
-             const elem = document.getElementById('mainContentArea');
-             if (!elem) { console.error("Fullscreen target #mainContentArea not found."); return; }
-             if (elem.requestFullscreen) { elem.requestFullscreen().catch(err => console.error(`Fullscreen error: ${err.message} (${err.name})`)); }
-             else if (elem.webkitRequestFullscreen) { elem.webkitRequestFullscreen(); }
-             else if (elem.msRequestFullscreen) { elem.msRequestFullscreen(); }
-             else { console.warn("Fullscreen API not fully supported by this browser."); }
-        }
-
+        function enterFullscreen() { /* ... (no changes) ... */ const elem = document.getElementById('mainContentArea'); if (!elem) { console.error("Fullscreen target #mainContentArea not found."); return; } if (elem.requestFullscreen) { elem.requestFullscreen().catch(err => console.error(`Fullscreen error: ${err.message} (${err.name})`)); } else if (elem.webkitRequestFullscreen) { elem.webkitRequestFullscreen(); } else if (elem.msRequestFullscreen) { elem.msRequestFullscreen(); } else { console.warn("Fullscreen API not fully supported by this browser."); } }
         function togglePrevButton() { prevBtn.disabled = randomCheckbox.checked; }
         function debounce(func, wait, immediate) { /* ... (no changes) ... */ var timeout; return function() { var context = this, args = arguments; var later = function() { timeout = null; if (!immediate) func.apply(context, args); }; var callNow = immediate && !timeout; clearTimeout(timeout); timeout = setTimeout(later, wait); if (callNow) func.apply(context, args); }; };
 
