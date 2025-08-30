@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Alphabet & Word Tracing Pad</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@700&family=Lilita+One&display=swap" rel="stylesheet">
+    <style>
+        html, body { height: 100%; overflow: hidden; margin: 0; padding: 0; font-family: 'Inter', sans-serif; background-color: #fefce8; /* Cheerful yellow background */ }
+        body { display: flex; flex-direction: column; height: 100vh; }
+
+        /* Page Title */
+        #pageTitle {
+             text-align: center; padding: 0.5rem 0;
+             font-size: 1.8rem; font-weight: bold; color: #ca8a04; /* Dark yellow */
+             width: 100%; flex-shrink: 0;
+        }
+
+        /* Flex Layout Container */
+        .layout-container { display: flex; flex-grow: 1; overflow: hidden; width: 100%; height: 100%; }
+
+        /* TOC Sidebar */
+        #tocContainer {
+            width: 120px; flex-shrink: 0; height: 100%; overflow-y: auto;
+            background-color: #fef9c3; /* Lighter yellow */
+            border-right: 2px solid #fde68a;
+            padding: 0.5rem;
+        }
+        .toc-header { font-weight: bold; font-size: 1.1rem; color: #a16207; margin-top: 1rem; margin-bottom: 0.5rem; }
+        .toc-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(45px, 1fr)); gap: 0.5rem; }
+        .toc-item {
+            font-family: 'Lilita One', cursive; font-size: 1.8rem; padding: 0.3rem;
+            text-align: center; cursor: pointer; border-radius: 0.375rem;
+            background-color: #ffffff;
+            transition: background-color 0.2s ease; user-select: none; border: 1px solid #d1d5db;
+        }
+        .toc-item:hover { background-color: #fef08a; }
+        .toc-item.active { background-color: #facc15; color: white; font-weight: bold; border-color: #eab308; }
+
+        /* Main Content Area */
+        #mainContentArea {
+            flex-grow: 1; display: flex; flex-direction: column; align-items: center;
+            height: 100%; overflow-y: auto; padding: 1rem; box-sizing: border-box;
+        }
+        #mainContentArea:fullscreen { background-color: #fefce8; padding: 1rem; }
+
+        /* Character Display - Guide text for tracing */
+        .guide-display {
+            font-family: 'Lilita One', cursive;
+            font-size: 15rem; /* Default size, will adjust in JS for words */
+            line-height: 1; color: #e7e5e4; /* Faint gray */
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            user-select: none; z-index: 1;
+        }
+
+        /* Canvas for drawing */
+        #drawingCanvas { position: absolute; top: 0; left: 0; cursor: crosshair; z-index: 10; touch-action: none; }
+
+        /* Drawing Area Container */
+        .main-container {
+            position: relative; width: 100%;
+            max-width: 650px; height: auto; aspect-ratio: 1 / 1;
+            margin-bottom: 1.5rem; border: 2px solid #e5e7eb; border-radius: 0.75rem;
+            overflow: hidden; background-color: white;
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.08);
+            order: 2;
+        }
+
+        /* Meaning/Emoji Container */
+        .meaning-container {
+            display: flex; justify-content: center; align-items: center;
+            margin-bottom: 1.5rem; min-height: auto; flex-shrink: 0;
+            background-color: #ffffff; border-radius: 50%;
+            width: 110px; height: 110px; padding: 0.5rem;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.1); border: 2px solid #e5e7eb;
+            order: 1;
+        }
+        #meaningEmoji { font-size: 5rem; line-height: 1; text-align: center; }
+
+        /* Buttons */
+        .control-button { /* ... (Same button styles as Hanzi app) ... */ display: inline-block; padding: 0.8rem 1.5rem; font-size: 1.2rem; font-weight: bold; color: white; background-color: #3b82f6; border: none; border-radius: 0.75rem; cursor: pointer; text-align: center; text-decoration: none; transition: background-color 0.3s ease, opacity 0.3s ease; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+        .control-button:hover:not(:disabled) { background-color: #2563eb; }
+        .control-button:active:not(:disabled) { background-color: #1d4ed8; transform: translateY(1px); }
+        .control-button:disabled { background-color: #9ca3af; opacity: 0.7; cursor: not-allowed; }
+        #fullscreenBtn { background-color: #10b981; }
+        #prevBtn { background-color: #f59e0b; }
+        #clearBtn { background-color: #ef4444; }
+
+        /* Controls Container */
+        .controls-container {
+            display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
+            gap: 1rem; margin-top: 1.5rem; padding: 0 1rem; width: 100%; max-width: 900px;
+            flex-shrink: 0; order: 3;
+        }
+        .checkbox-container { display: flex; align-items: center; gap: 0.5rem; font-size: 1.1rem; color: #1f2937; }
+        #randomCheckbox { width: 1.2rem; height: 1.2rem; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div class="layout-container">
+        <div id="tocContainer">
+            <!-- TOC content will be generated by JS -->
+        </div>
+
+        <div id="mainContentArea">
+             <h1 id="pageTitle">Alphabet & Word Tracing</h1>
+
+             <div class="meaning-container">
+                <span id="meaningEmoji" aria-hidden="true"></span>
+            </div>
+
+            <div class="main-container">
+                <div id="guideDisplay" class="guide-display"></div>
+                <canvas id="drawingCanvas"></canvas>
+            </div>
+
+            <div class="controls-container">
+                <button id="clearBtn" class="control-button">Clear</button>
+                <button id="prevBtn" class="control-button">Previous</button>
+                <button id="nextBtn" class="control-button">Next</button>
+                <button id="fullscreenBtn" class="control-button">Fullscreen</button>
+                <div class="checkbox-container">
+                    <input type="checkbox" id="randomCheckbox">
+                    <label for="randomCheckbox">Random Order</label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Data Configuration ---
+        const data = {
+            "Uppercase": [
+                { display: 'A', speech: 'A', emoji: '🍎' }, { display: 'B', speech: 'B', emoji: '🎈' },
+                { display: 'C', speech: 'C', emoji: '🐱' }, { display: 'D', speech: 'D', emoji: '🐶' },
+                { display: 'E', speech: 'E', emoji: '🐘' }, { display: 'F', speech: 'F', emoji: '🐟' },
+                { display: 'G', speech: 'G', emoji: '🍇' }, { display: 'H', speech: 'H', emoji: '🏠' },
+                { display: 'I', speech: 'I', emoji: '🧊' }, { display: 'J', speech: 'J', emoji: '잼' },
+                { display: 'K', speech: 'K', emoji: '🪁' }, { display: 'L', speech: 'L', emoji: '🦁' },
+                { display: 'M', speech: 'M', emoji: '🌙' }, { display: 'N', speech: 'N', emoji: '👃' },
+                { display: 'O', speech: 'O', emoji: '🍊' }, { display: 'P', speech: 'P', emoji: '🐧' },
+                { display: 'Q', speech: 'Q', emoji: '👑' }, { display: 'R', speech: 'R', emoji: '🌈' },
+                { display: 'S', speech: 'S', emoji: '☀️' }, { display: 'T', speech: 'T', emoji: '🐯' },
+                { display: 'U', speech: 'U', emoji: '☂️' }, { display: 'V', speech: 'V', emoji: '🎻' },
+                { display: 'W', speech: 'W', emoji: '🍉' }, { display: 'X', speech: 'X', emoji: ' xylophone' },
+                { display: 'Y', speech: 'Y', emoji: 'ヨーヨー' }, { display: 'Z', speech: 'Z', emoji: '🦓' }
+            ],
+            "Lowercase": "abcdefghijklmnopqrstuvwxyz".split('').map(c => ({ display: c, speech: c, emoji: '🔡' })),
+            "Numbers": [
+                { display: '1', speech: 'One', emoji: '1️⃣' }, { display: '2', speech: 'Two', emoji: '2️⃣' },
+                { display: '3', speech: 'Three', emoji: '3️⃣' }, { display: '4', speech: 'Four', emoji: '4️⃣' },
+                { display: '5', speech: 'Five', emoji: '5️⃣' }, { display: '6', speech: 'Six', emoji: '6️⃣' },
+                { display: '7', speech: 'Seven', emoji: '7️⃣' }, { display: '8', speech: 'Eight', emoji: '8️⃣' },
+                { display: '9', speech: 'Nine', emoji: '9️⃣' }, { display: '0', speech: 'Zero', emoji: '0️⃣' }
+            ],
+            "Words": [
+                { display: 'CAT', speech: 'Cat', emoji: '🐱' }, { display: 'DOG', speech: 'Dog', emoji: '🐶' },
+                { display: 'SUN', speech: 'Sun', emoji: '☀️' }, { display: 'BALL', speech: 'Ball', emoji: '⚽' },
+                { display: 'CAR', speech: 'Car', emoji: '🚗' }, { display: 'STAR', speech: 'Star', emoji: '⭐' },
+                { display: 'BOOK', speech: 'Book', emoji: '📖' }, { display: 'TREE', speech: 'Tree', emoji: '🌳' }
+            ]
+        };
+        const allItems = [].concat(...Object.values(data));
+        const encouragementPhrases = [ "Great job!", "Awesome!", "You're doing great!", "Wonderful!", "Keep it up!", "Super!", "Fantastic!", "Well done!", "Amazing!", "Excellent!" ];
+
+        let currentItemIndex = 0;
+
+        // --- Canvas and Context ---
+        const canvasContainer = document.querySelector('.main-container');
+        const canvas = document.getElementById('drawingCanvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let hasDrawnSomething = false;
+
+        // --- DOM Elements ---
+        const tocContainer = document.getElementById('tocContainer');
+        const guideDisplay = document.getElementById('guideDisplay');
+        const meaningEmoji = document.getElementById('meaningEmoji');
+        const clearBtn = document.getElementById('clearBtn');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        const randomCheckbox = document.getElementById('randomCheckbox');
+
+        // --- Speech Synthesis ---
+        const synth = window.speechSynthesis;
+        function speak(textToSpeak, langCode = 'en-US', interrupt = false) {
+             if (!synth) return;
+             if (interrupt || synth.speaking) synth.cancel();
+             setTimeout(() => {
+                const utterThis = new SpeechSynthesisUtterance(textToSpeak);
+                utterThis.lang = langCode;
+                utterThis.rate = 0.9;
+                synth.speak(utterThis);
+             }, 75);
+        }
+        function playEncouragement() { const phrase = encouragementPhrases[Math.floor(Math.random() * encouragementPhrases.length)]; speak(phrase, 'en-US', true); }
+
+        // --- Functions ---
+
+        function populateTOC() {
+            tocContainer.innerHTML = '';
+            let globalIndex = 0;
+            for (const section in data) {
+                const header = document.createElement('div');
+                header.className = 'toc-header';
+                header.textContent = section;
+                tocContainer.appendChild(header);
+
+                const list = document.createElement('div');
+                list.className = 'toc-list';
+                data[section].forEach(item => {
+                    const tocItem = document.createElement('div');
+                    tocItem.classList.add('toc-item');
+                    tocItem.textContent = item.display;
+                    tocItem.dataset.index = globalIndex;
+                    list.appendChild(tocItem);
+                    globalIndex++;
+                });
+                tocContainer.appendChild(list);
+            }
+        }
+
+        function updateTocHighlight() {
+            document.querySelectorAll('.toc-item.active').forEach(el => el.classList.remove('active'));
+            const currentActive = document.querySelector(`.toc-item[data-index="${currentItemIndex}"]`);
+            if (currentActive) {
+                currentActive.classList.add('active');
+                currentActive.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+
+        function resizeCanvas() {
+            const containerRect = canvasContainer.getBoundingClientRect();
+            canvas.width = containerRect.width;
+            canvas.height = containerRect.height;
+            ctx.strokeStyle = "#166534";
+            ctx.lineWidth = 18;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+        }
+
+        function displayItem() {
+            if (currentItemIndex < 0 || currentItemIndex >= allItems.length) return;
+            const current = allItems[currentItemIndex];
+            guideDisplay.textContent = current.display;
+            meaningEmoji.textContent = current.emoji;
+
+            // Adjust font size for longer words
+            if (current.display.length > 2) {
+                guideDisplay.style.fontSize = '10rem';
+            } else {
+                guideDisplay.style.fontSize = '15rem';
+            }
+
+            clearCanvas();
+            speak(current.speech, 'en-US', true);
+            updateTocHighlight();
+        }
+
+        function clearCanvas() {
+             ctx.clearRect(0, 0, canvas.width, canvas.height);
+             hasDrawnSomething = false;
+        }
+
+        // --- Drawing Event Handlers ---
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return { x: clientX - rect.left, y: clientY - rect.top };
+        }
+        function startDrawing(e) {
+            e.preventDefault();
+            isDrawing = true;
+            hasDrawnSomething = true;
+            const { x, y } = getPos(e);
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+        }
+        function draw(e) {
+            if (!isDrawing) return;
+            e.preventDefault();
+            const { x, y } = getPos(e);
+            ctx.lineTo(x, y);
+            ctx.stroke();
+        }
+        function stopDrawing() {
+            if (!isDrawing) return;
+            isDrawing = false;
+            if (hasDrawnSomething) {
+                playEncouragement();
+            }
+        }
+
+        // --- Control Button Functions ---
+        function previousItem() {
+            if (randomCheckbox.checked) return;
+            currentItemIndex = (currentItemIndex - 1 + allItems.length) % allItems.length;
+            displayItem();
+        }
+        function nextItem() {
+            if (randomCheckbox.checked) {
+                let nextIndex;
+                do { nextIndex = Math.floor(Math.random() * allItems.length); } while (nextIndex === currentItemIndex);
+                currentItemIndex = nextIndex;
+            } else {
+                currentItemIndex = (currentItemIndex + 1) % allItems.length;
+            }
+            displayItem();
+        }
+        function enterFullscreen() { document.getElementById('mainContentArea').requestFullscreen(); }
+
+        // --- Event Listeners ---
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseleave', stopDrawing);
+        canvas.addEventListener('touchstart', startDrawing);
+        canvas.addEventListener('touchmove', draw);
+        canvas.addEventListener('touchend', stopDrawing);
+
+        clearBtn.addEventListener('click', clearCanvas);
+        prevBtn.addEventListener('click', previousItem);
+        nextBtn.addEventListener('click', nextItem);
+        fullscreenBtn.addEventListener('click', enterFullscreen);
+        randomCheckbox.addEventListener('change', () => { prevBtn.disabled = randomCheckbox.checked; });
+        tocContainer.addEventListener('click', (e) => {
+            if (e.target.matches('.toc-item')) {
+                currentItemIndex = parseInt(e.target.dataset.index, 10);
+                displayItem();
+            }
+        });
+        window.addEventListener('resize', resizeCanvas);
+
+
+        // --- Initialization ---
+        populateTOC();
+        resizeCanvas();
+        displayItem();
+        prevBtn.disabled = randomCheckbox.checked;
+    </script>
+</body>
+</html>
