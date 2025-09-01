@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Alphabet & Number Tracing Pad</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Using Inter for UI and Patrick Hand for handwriting/tracing -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Patrick+Hand&display=swap" rel="stylesheet">
+    <style>
+        /* Custom styles - Flexbox Layout */
+        html, body {
+            height: 100%; overflow: hidden;
+            margin: 0; padding: 0; font-family: 'Inter', sans-serif;
+            background-color: #f0f9ff;
+        }
+        body {
+             height: 100vh;
+             position: relative;
+        }
+
+        /* Define a class for the handwriting font */
+        .handwriting {
+            font-family: 'Patrick Hand', cursive;
+        }
+
+        /* Page Title */
+        #pageTitle {
+             text-align: center; padding: 0.5rem 0;
+             font-size: 1.8rem; font-weight: bold; color: #1d4ed8;
+             width: 100%;
+             flex-shrink: 0;
+             order: 0;
+        }
+
+        /* Flex Layout Container (Holds TOC and Main Content) */
+        .layout-container {
+            display: flex;
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* TOC Sidebar */
+        #tocContainer {
+            width: 110px;
+            flex-shrink: 0;
+            height: 100%;
+            overflow-y: auto;
+            background-color: #e0f2fe;
+            border-right: 2px solid #bae6fd;
+            padding: 0.5rem;
+        }
+        .toc-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(45px, 1fr)); gap: 0.5rem; }
+        /* Use handwriting font for TOC items */
+        .toc-item { font-size: 1.8rem; padding: 0.3rem; text-align: center; cursor: pointer; border-radius: 0.375rem; background-color: #ffffff; transition: background-color 0.2s ease; user-select: none; border: 1px solid #d1d5db; }
+        .toc-item:hover { background-color: #bfdbfe; }
+        .toc-item.active { background-color: #3b82f6; color: white; font-weight: bold; border-color: #2563eb; }
+
+        /* Main Content Area */
+        #mainContentArea {
+            flex-grow: 1;
+            display: flex; flex-direction: column; align-items: center;
+            height: 100%;
+            overflow-y: auto;
+            padding: 1rem;
+            box-sizing: border-box;
+            background-color: #f0f9ff;
+        }
+        #mainContentArea:fullscreen { background-color: #f0f9ff; padding: 1rem; }
+
+
+        /* Meaning/Emoji Container */
+        .meaning-container {
+            display: flex; justify-content: center; align-items: center;
+            margin-bottom: 1.5rem;
+            flex-shrink: 0;
+            background-color: #ffffff; border-radius: 50%;
+            width: 110px; height: 110px; padding: 0.5rem;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.1); border: 2px solid #e5e7eb;
+            order: 1;
+        }
+        #meaningEmoji { font-size: 5rem; line-height: 1; text-align: center; }
+
+         /* Container for Display and Practice */
+        .writer-container {
+            display: flex;
+            flex-direction: column; /* Default: Stack vertically */
+            align-items: center;
+            gap: 1.5rem;
+            width: 100%;
+            max-width: 700px;
+            flex-shrink: 0;
+            order: 2;
+        }
+
+        /* Individual Target Containers */
+        .tracing-target {
+            width: 100%;
+            max-width: 650px;
+            height: auto;
+            /* Default aspect ratio for single letters/numbers */
+            aspect-ratio: 1 / 1;
+            border: 2px solid #e5e7eb; border-radius: 0.75rem; overflow: hidden;
+            background-color: white;
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.08);
+            position: relative;
+        }
+
+        /* Adjust aspect ratio for words on mobile (portrait) */
+        .tracing-target.word-mode {
+            aspect-ratio: 2 / 1;
+            max-width: 700px;
+        }
+
+
+        /* Display Target (Static View) */
+        #displayTarget {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            /* Font size is set dynamically by JS */
+            color: #333;
+            user-select: none;
+        }
+
+        /* Practice Target (Canvas) */
+        #practiceTarget {
+            /* Add subtle guidelines (like primary school paper) */
+            background-image:
+                linear-gradient(to bottom, #fecaca 2px, transparent 2px), /* Top line (Red) */
+                /* Middle dotted line (Blue) */
+                repeating-linear-gradient(to right, #93c5fd 0, #93c5fd 5px, transparent 5px, transparent 10px),
+                linear-gradient(to bottom, #93c5fd 2px, transparent 2px); /* Bottom line (Blue) */
+            background-size: 100% 30%, 100% 2px, 100% 70%;
+            background-repeat: no-repeat;
+            background-position: top, center, bottom;
+        }
+
+        #tracingCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+            touch-action: none; /* CRITICAL for mobile drawing */
+        }
+
+
+        /* Media Query for wider/landscape screens */
+        @media (min-aspect-ratio: 10/9) and (min-width: 1024px) {
+             .writer-container {
+                 flex-direction: row; align-items: flex-start;
+                 max-width: 900px;
+                 gap: 2rem;
+             }
+             /* Ensure targets remain square in landscape view */
+             .tracing-target, .tracing-target.word-mode {
+                 flex: 1; width: auto; max-width: 400px;
+                 aspect-ratio: 1/1;
+             }
+        }
+
+        /* Buttons */
+        .control-button { display: inline-block; padding: 0.8rem 1.5rem; font-size: 1.2rem; font-weight: bold; color: white; background-color: #3b82f6; border: none; border-radius: 0.75rem; cursor: pointer; text-align: center; transition: background-color 0.3s ease, opacity 0.3s ease; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+        .control-button:hover:not(:disabled) { background-color: #2563eb; }
+        .control-button:active:not(:disabled) { transform: translateY(1px); }
+        .control-button:disabled { background-color: #9ca3af; opacity: 0.7; cursor: not-allowed; }
+        #fullscreenBtn { background-color: #10b981; } #fullscreenBtn:hover:not(:disabled) { background-color: #059669; }
+        #prevBtn { background-color: #f59e0b; } #prevBtn:hover:not(:disabled) { background-color: #d97706; }
+        #clearBtn { background-color: #ef4444; } #clearBtn:hover:not(:disabled) { background-color: #dc2626; }
+
+        /* Controls Container */
+        .controls-container {
+            display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
+            gap: 1rem; margin-top: 1.5rem; padding: 0 1rem; width: 100%; max-width: 900px; flex-shrink: 0;
+            order: 3;
+        }
+        .checkbox-container { display: flex; align-items: center; gap: 0.5rem; font-size: 1.1rem; color: #1f2937; }
+        #randomCheckbox { width: 1.2rem; height: 1.2rem; cursor: pointer; }
+
+    </style>
+</head>
+<body>
+    <div class="layout-container">
+        <div id="tocContainer">
+            <div id="tocList" class="toc-list"></div>
+        </div>
+
+        <div id="mainContentArea">
+             <h1 id="pageTitle">Alphabet & Number Tracing Pad</h1>
+
+             <div class="meaning-container">
+                <span id="meaningEmoji" aria-hidden="true"></span>
+            </div>
+
+            <div class="writer-container">
+                <!-- Display Target (Static View) -->
+                <div id="displayTarget" class="tracing-target handwriting"></div>
+                <!-- Practice Target (Canvas) -->
+                <div id="practiceTarget" class="tracing-target">
+                    <canvas id="tracingCanvas"></canvas>
+                </div>
+            </div>
+
+            <div class="controls-container">
+                <button id="clearBtn" class="control-button">Clear (Retry)</button>
+                <button id="prevBtn" class="control-button">Previous</button>
+                <button id="nextBtn" class="control-button">Next</button>
+                <button id="fullscreenBtn" class="control-button">Fullscreen</button>
+                <div class="checkbox-container">
+                    <input type="checkbox" id="randomCheckbox">
+                    <label for="randomCheckbox">Random Order</label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Configuration ---
+        const items = [
+            // Uppercase
+            { char: 'A', type: 'letter', emoji: '🍎' }, { char: 'B', type: 'letter', emoji: '🐝' },
+            { char: 'C', type: 'letter', emoji: '🐱' }, { char: 'D', type: 'letter', emoji: '🐶' },
+            { char: 'E', type: 'letter', emoji: '🐘' }, { char: 'F', type: 'letter', emoji: '🐸' },
+            { char: 'G', type: 'letter', emoji: '🍇' }, { char: 'H', type: 'letter', emoji: '🏠' },
+            { char: 'I', type: 'letter', emoji: '🍦' }, { char: 'J', type: 'letter', emoji: '🍓' },
+            { char: 'K', type: 'letter', emoji: '🐨' }, { char: 'L', type: 'letter', emoji: '🍋' },
+            { char: 'M', type: 'letter', emoji: '🐒' }, { char: 'N', type: 'letter', emoji: '🐦' },
+            { char: 'O', type: 'letter', emoji: '🐙' }, { char: 'P', type: 'letter', emoji: '🐧' },
+            { char: 'Q', type: 'letter', emoji: '👑' }, { char: 'R', type: 'letter', emoji: '🐰' },
+            { char: 'S', type: 'letter', emoji: '☀️' }, { char: 'T', type: 'letter', emoji: '🐢' },
+            { char: 'U', type: 'letter', emoji: '☂️' }, { char: 'V', type: 'letter', emoji: '🎻' },
+            { char: 'W', type: 'letter', emoji: '🍉' }, { char: 'X', type: 'letter', emoji: ' xylophone ' },
+            { char: 'Y', type: 'letter', emoji: '🧶' }, { char: 'Z', type: 'letter', emoji: '🦓' },
+            // Lowercase
+            { char: 'a', type: 'letter', emoji: '🐜' }, { char: 'b', type: 'letter', emoji: '🍌' },
+            { char: 'c', type: 'letter', emoji: '🚗' }, { char: 'd', type: 'letter', emoji: '🦆' },
+            { char: 'e', type: 'letter', emoji: '🥚' }, { char: 'f', type: 'letter', emoji: '🐟' },
+            { char: 'g', type: 'letter', emoji: '🎁' }, { char: 'h', type: 'letter', emoji: '🐴' },
+            { char: 'i', type: 'letter', emoji: '🐞' }, { char: 'j', type: 'letter', emoji: '🤹' },
+            { char: 'k', type: 'letter', emoji: '🔑' }, { char: 'l', type: 'letter', emoji: '💡' },
+            { char: 'm', type: 'letter', emoji: '🐭' }, { char: 'n', type: 'letter', emoji: '👃' },
+            { char: 'o', type: 'letter', emoji: '🦉' }, { char: 'p', type: 'letter', emoji: '🐼' },
+            { char: 'q', type: 'letter', emoji: '❓' }, { char: 'r', type: 'letter', emoji: '🚀' },
+            { char: 's', type: 'letter', emoji: '🐍' }, { char: 't', type: 'letter', emoji: '🌳' },
+            { char: 'u', type: 'letter', emoji: '🦄' }, { char: 'v', type: 'letter', emoji: '🌋' },
+            { char: 'w', type: 'letter', emoji: '🐳' }, { char: 'x', type: 'letter', emoji: '🦊' },
+            { char: 'y', type: 'letter', emoji: '🛶' }, { char: 'z', type: 'letter', emoji: '⚡' },
+
+            // Numbers
+            { char: '0', type: 'number', emoji: '⭕' }, { char: '1', type: 'number', emoji: '1️⃣' },
+            { char: '2', type: 'number', emoji: '2️⃣' }, { char: '3', type: 'number', emoji: '3️⃣' },
+            { char: '4', type: 'number', emoji: '4️⃣' }, { char: '5', type: 'number', emoji: '5️⃣' },
+            { char: '6', type: 'number', emoji: '6️⃣' }, { char: '7', type: 'number', emoji: '7️⃣' },
+            { char: '8', type: 'number', emoji: '8️⃣' }, { char: '9', type: 'number', emoji: '9️⃣' },
+            // Simple Words
+            { char: 'Cat', type: 'word', emoji: '🐱' },
+            { char: 'Dog', type: 'word', emoji: '🐶' },
+            { char: 'Sun', type: 'word', emoji: '☀️' },
+            { char: 'Ball', type: 'word', emoji: '⚽' },
+            { char: 'Tree', type: 'word', emoji: '🌳' },
+            { char: 'Milk', type: 'word', emoji: '🥛' },
+        ];
+
+        let currentItemIndex = 0;
+        const encouragementPhrases = [
+            "Great job!", "Well done!", "Nice tracing!", "Looking good!", "Keep it up!",
+            "Excellent!", "Fantastic!", "You did it!", "Beautiful!", "Awesome writing!"
+        ];
+
+        // --- DOM Elements & Constants ---
+        const tocListContainer = document.getElementById('tocList');
+        const meaningEmoji = document.getElementById('meaningEmoji');
+        const clearBtn = document.getElementById('clearBtn');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        const randomCheckbox = document.getElementById('randomCheckbox');
+        const displayTargetDiv = document.getElementById('displayTarget');
+        const practiceTargetDiv = document.getElementById('practiceTarget');
+        const canvas = document.getElementById('tracingCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const FONT_NAME = '"Patrick Hand"';
+        const DRAWING_COLOR = '#166534'; // Dark green
+        const GUIDE_COLOR = '#cbd5e1'; // Light gray
+
+        // --- State Flags ---
+        let isInitializing = true;
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        // State for preserving strokes across resizes
+        let drawingHistory = [];
+        let currentStroke = null;
+
+        // --- Speech Synthesis (English) ---
+        const synth = window.speechSynthesis;
+        let voices = [];
+        function populateVoiceList() {
+            if(typeof speechSynthesis === 'undefined') return;
+            // Prioritize US/GB English
+            voices = synth.getVoices().filter(voice => voice.lang.startsWith('en-US') || voice.lang.startsWith('en-GB'));
+            if (voices.length === 0) {
+                 voices = synth.getVoices().filter(voice => voice.lang.startsWith('en'));
+            }
+        }
+        populateVoiceList();
+        if (typeof speechSynthesis !== 'undefined' && speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = populateVoiceList;
+        }
+
+        function speak(textToSpeak, langCode = 'en-US', interrupt = false) {
+            if (!synth) return;
+            if (interrupt || synth.speaking) { synth.cancel(); }
+            if (textToSpeak !== '') {
+                const utterThis = new SpeechSynthesisUtterance(textToSpeak);
+                const voice = voices.find(v => v.lang === langCode) || voices[0];
+                if (voice) {
+                    utterThis.voice = voice;
+                }
+                utterThis.pitch = 1;
+                utterThis.rate = 0.9; // Slightly slower for learners
+                setTimeout(() => { synth.speak(utterThis); }, 75);
+            }
+        }
+
+        function playEncouragement() {
+            const randomIndex = Math.floor(Math.random() * encouragementPhrases.length);
+            const phrase = encouragementPhrases[randomIndex];
+            speak(phrase, 'en-US', true);
+        }
+
+        // --- Initialization Functions ---
+
+        function populateTOC() {
+            tocListContainer.innerHTML = '';
+            items.forEach((itemData, index) => {
+                const tocItem = document.createElement('div');
+                tocItem.classList.add('toc-item', 'handwriting');
+                // Show only the first letter for words in the TOC for space efficiency
+                tocItem.textContent = itemData.type === 'word' ? itemData.char[0] : itemData.char;
+                tocItem.title = itemData.char; // Show full word on hover
+                tocItem.dataset.index = index;
+                tocListContainer.appendChild(tocItem);
+            });
+        }
+
+        function updateTocHighlight() {
+            const previousActive = tocListContainer.querySelector('.toc-item.active');
+            if (previousActive) previousActive.classList.remove('active');
+            const currentActive = tocListContainer.querySelector(`.toc-item[data-index="${currentItemIndex}"]`);
+            if (currentActive) {
+                currentActive.classList.add('active');
+                currentActive.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+
+        // --- Canvas Functions ---
+
+        // Helper to determine font size based on container size
+        function getBestFitFontSize(text, width, height) {
+            // Approximation: Start based on height, then adjust for width if it's a word.
+            // Aim to fit vertically within the guide lines (which span from 30% to 70% height)
+            let size = height * 0.55;
+
+            if (text.length > 1) {
+                // If it's a word, ensure it fits horizontally. This ratio is empirical.
+                size = Math.min(size, (width / text.length) * 1.5);
+            }
+            return Math.floor(size);
+        }
+
+        function setupCanvas() {
+            // Set canvas resolution to match display size for sharpness (Handle DPR/Retina)
+            const dpr = window.devicePixelRatio || 1;
+            const rect = practiceTargetDiv.getBoundingClientRect();
+
+            // Safety check if the element is not visible yet
+            if (rect.width === 0 || rect.height === 0) {
+                return false;
+            }
+
+            // Set bitmap size
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+
+            // Scale context
+            ctx.scale(dpr, dpr);
+
+            // Set CSS size (visual size)
+            canvas.style.width = `${rect.width}px`;
+            canvas.style.height = `${rect.height}px`;
+
+            // Default Drawing styles (must be reset after resize/setup)
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            // Calculate line width dynamically based on canvas size
+            ctx.lineWidth = Math.max(6, Math.min(rect.width / 30, 12));
+
+            return true;
+        }
+
+        function drawBackgroundGuide(character) {
+            const rect = practiceTargetDiv.getBoundingClientRect();
+            const width = rect.width;
+            const height = rect.height;
+
+            // 1. Draw the faint character outline
+            ctx.save();
+            ctx.fillStyle = GUIDE_COLOR;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = getBestFitFontSize(character, width, height) + 'px ' + FONT_NAME;
+
+            // Center the text. The vertical offset helps align the font baseline correctly.
+            ctx.fillText(character, width / 2, height / 2 + (height * 0.05));
+            ctx.restore();
+        }
+
+        // Redraws strokes from history (used after resize)
+        function redrawUserStrokes() {
+            ctx.save();
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+
+            drawingHistory.forEach(stroke => {
+                if (stroke.points.length < 1) return;
+
+                ctx.strokeStyle = stroke.color;
+                ctx.lineWidth = stroke.width;
+
+                ctx.beginPath();
+                ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+                for (let i = 1; i < stroke.points.length; i++) {
+                    ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+                }
+                ctx.stroke();
+            });
+            ctx.restore();
+        }
+
+        function clearPracticeArea() {
+            // Clear history
+            drawingHistory = [];
+            currentStroke = null;
+
+            // Clear the canvas bitmap
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Redraw the guide immediately
+            const currentItemData = items[currentItemIndex];
+            if (setupCanvas()) {
+                 drawBackgroundGuide(currentItemData.char);
+            }
+        }
+
+        function handleClearButton() {
+            clearPracticeArea();
+        }
+
+
+        // --- Drawing Event Handlers ---
+
+        function getCoordinates(event) {
+            const rect = canvas.getBoundingClientRect();
+            let x, y;
+            // Handle touch events
+            if (event.touches && event.touches.length > 0) {
+                x = event.touches[0].clientX - rect.left;
+                y = event.touches[0].clientY - rect.top;
+            // Handle mouse events
+            } else {
+                x = event.clientX - rect.left;
+                y = event.clientY - rect.top;
+            }
+            return [x, y];
+        }
+
+        function startDrawing(event) {
+            event.preventDefault(); // Prevent scrolling/zooming on touch devices
+            isDrawing = true;
+            [lastX, lastY] = getCoordinates(event);
+
+            // Start a new stroke in history
+            currentStroke = {
+                color: DRAWING_COLOR,
+                width: ctx.lineWidth, // Use the dynamically calculated width
+                points: [{x: lastX, y: lastY}]
+            };
+            drawingHistory.push(currentStroke);
+
+             // Draw a dot if the user just clicks/taps
+             // Ensure styles are set before the first stroke
+            ctx.strokeStyle = DRAWING_COLOR;
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(lastX, lastY);
+            ctx.stroke();
+        }
+
+        function draw(event) {
+            if (!isDrawing || !currentStroke) return;
+            event.preventDefault();
+            const [x, y] = getCoordinates(event);
+
+            // Ensure styles are correct (important if width/color changed dynamically, though unlikely here)
+            ctx.strokeStyle = currentStroke.color;
+            ctx.lineWidth = currentStroke.width;
+
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(x, y);
+            ctx.stroke();
+
+            [lastX, lastY] = [x, y];
+            currentStroke.points.push({x, y}); // Add point to history
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+            currentStroke = null; // End the current stroke
+        }
+
+
+        // --- Main Display Function ---
+        // Added preserveHistory parameter to handle resizes without clearing data
+        function displayItem(preserveHistory = false) {
+             if (currentItemIndex < 0 || currentItemIndex >= items.length) {
+                currentItemIndex = 0;
+                if (items.length === 0) return;
+             }
+             const currentItemData = items[currentItemIndex];
+
+             // 0. Handle Word Mode CSS Class (for aspect ratio adjustment on mobile/portrait)
+             if (currentItemData.type === 'word') {
+                 displayTargetDiv.classList.add('word-mode');
+                 practiceTargetDiv.classList.add('word-mode');
+             } else {
+                 displayTargetDiv.classList.remove('word-mode');
+                 practiceTargetDiv.classList.remove('word-mode');
+             }
+
+
+             // 1. Update Emoji
+             meaningEmoji.textContent = currentItemData.emoji || '';
+
+             // 2. Update Display Target (Static DIV)
+             // We must measure the container *after* potential aspect ratio changes
+             const displayRect = displayTargetDiv.getBoundingClientRect();
+             const fontSize = getBestFitFontSize(currentItemData.char, displayRect.width, displayRect.height);
+             displayTargetDiv.style.fontSize = `${fontSize}px`;
+             displayTargetDiv.textContent = currentItemData.char;
+
+             // 2.5. Handle History
+             if (!preserveHistory) {
+                 drawingHistory = [];
+                 currentStroke = null;
+             }
+
+             // 3. Setup and Draw Canvas Guide
+             if (setupCanvas()) {
+                drawBackgroundGuide(currentItemData.char);
+                // If resizing, redraw the user's strokes on top
+                if (preserveHistory) {
+                    redrawUserStrokes();
+                }
+             } else if (!isInitializing) {
+                // If setup fails (e.g., div hidden during rapid resize), try again shortly
+                console.warn("Canvas setup failed (dimensions zero), retrying...");
+                setTimeout(() => displayItem(preserveHistory), 100);
+                return;
+             }
+
+
+             // 4. Speak the item (only if loading a new item, not resizing)
+             if (!preserveHistory) {
+                speak(currentItemData.char, 'en-US', true);
+             }
+
+             // 5. Update TOC
+             updateTocHighlight();
+        }
+
+        // --- Navigation Functions ---
+
+        function previousItem() {
+            if (items.length === 0 || randomCheckbox.checked) return;
+            // Play encouragement when moving to the next item (implies completion)
+            playEncouragement();
+            currentItemIndex = (currentItemIndex - 1 + items.length) % items.length;
+            displayItem(false); // Load new item, clear history
+        }
+
+        function nextItem() {
+            if (items.length === 0) return;
+            // Play encouragement when moving to the next item
+            playEncouragement();
+
+            const isRandom = randomCheckbox.checked;
+            let nextIndex;
+            if (isRandom) {
+                if (items.length <= 1) nextIndex = 0;
+                else do {
+                    nextIndex = Math.floor(Math.random() * items.length);
+                } while (nextIndex === currentItemIndex);
+            } else {
+                nextIndex = (currentItemIndex + 1) % items.length;
+            }
+            currentItemIndex = nextIndex;
+            displayItem(false); // Load new item, clear history
+        }
+
+        function handleTocClick(event) {
+            const target = event.target;
+            if (target.classList.contains('toc-item') && target.dataset.index !== undefined) {
+                const index = parseInt(target.dataset.index, 10);
+                if (!isNaN(index) && index >= 0 && index < items.length) {
+                    playEncouragement();
+                    currentItemIndex = index;
+                    displayItem(false); // Load new item, clear history
+                }
+            }
+        }
+
+        function enterFullscreen() {
+            const elem = document.getElementById('mainContentArea');
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen().catch(err => console.error(`Fullscreen error: ${err.message}`));
+            } else if (elem.webkitRequestFullscreen) {
+                elem.webkitRequestFullscreen();
+            }
+        }
+
+        function togglePrevButton() {
+            prevBtn.disabled = randomCheckbox.checked;
+        }
+
+        function debounce(func, wait) {
+            var timeout;
+            return function() {
+                var context = this, args = arguments;
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(context, args), wait);
+            };
+        }
+
+        // Resize handler
+        const handleResize = debounce(function() {
+             if (isInitializing) return;
+             // We need to redraw everything because resizing changes dimensions and clears the canvas bitmap.
+             // We pass 'true' to preserve the user's drawing history.
+             if (items.length > 0) {
+                displayItem(true);
+            }
+        }, 200);
+
+        // --- Event Listeners ---
+        clearBtn.addEventListener('click', handleClearButton);
+        prevBtn.addEventListener('click', previousItem);
+        nextBtn.addEventListener('click', nextItem);
+        fullscreenBtn.addEventListener('click', enterFullscreen);
+        tocListContainer.addEventListener('click', handleTocClick);
+        randomCheckbox.addEventListener('change', togglePrevButton);
+        window.addEventListener('resize', handleResize);
+
+        // Canvas Event Listeners (Mouse)
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+
+        // Canvas Event Listeners (Touch)
+        // { passive: false } is required because we call preventDefault() in the handlers
+        canvas.addEventListener('touchstart', startDrawing, { passive: false });
+        canvas.addEventListener('touchmove', draw, { passive: false });
+        canvas.addEventListener('touchend', stopDrawing);
+        canvas.addEventListener('touchcancel', stopDrawing);
+
+
+        // --- Initialization ---
+        // Wait for fonts to load before initializing to ensure correct measurements for canvas drawing
+        document.fonts.load('1em ' + FONT_NAME).then(() => {
+            populateTOC();
+            togglePrevButton();
+            if (items.length > 0) {
+                // Use requestAnimationFrame to ensure the DOM is painted before we measure dimensions
+                requestAnimationFrame(() => {
+                        displayItem(false);
+                        isInitializing = false;
+                });
+            } else {
+                isInitializing = false;
+            }
+        }).catch((err) => {
+            console.error("Fonts failed to load.", err);
+            // Proceed anyway if fonts fail
+            isInitializing = false;
+            populateTOC();
+            if (items.length > 0) displayItem(false);
+        });
+
+    </script>
+</body>
+</html>
