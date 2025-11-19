@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Trace Master: Custom</title>
+    <style>
+        :root {
+            --bg-color: #f4f4f4;
+            --primary: #2d3436;
+            --guide: #dcdde1;
+            --active: #ffeaa7;
+            --accent: #fdcb6e;
+        }
+
+        body {
+            margin: 0; padding: 0;
+            background-color: var(--bg-color);
+            font-family: 'Comic Sans MS', 'Chalkboard SE', sans-serif;
+            display: flex; flex-direction: column; align-items: center;
+            height: 100vh; overflow: hidden; touch-action: none;
+        }
+
+        header {
+            width: 100%; height: 85px;
+            background: white;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 15px; box-sizing: border-box; z-index: 100;
+        }
+
+        .controls { display: flex; gap: 10px; align-items: center; }
+
+        button {
+            border: none; border-radius: 12px;
+            padding: 10px 20px; font-size: 1.2rem; font-weight: 800; color: white;
+            cursor: pointer; box-shadow: 0 4px 0 rgba(0,0,0,0.2);
+            transition: all 0.1s;
+        }
+        button:active { transform: translateY(3px); box-shadow: none; }
+
+        .btn-toggle { background: #0984e3; width: 80px; }
+        .btn-nav { background: #b2bec3; }
+        .btn-clear { background: #ff7675; font-size: 1rem; }
+
+        #char-display {
+            font-size: 3.5rem; font-weight: 900; color: var(--primary);
+            min-width: 60px; text-align: center; padding-bottom: 5px;
+        }
+
+        /* CANVAS WRAPPER */
+        #canvas-container {
+            position: relative; margin-top: 20px;
+            width: 350px; height: 400px;
+            background: white; border-radius: 35px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.1);
+        }
+
+        svg, canvas { position: absolute; top: 0; left: 0; border-radius: 35px; }
+        
+        /* Smooth stroke transition */
+        path { transition: stroke 0.2s ease; }
+
+        /* HINT DOT */
+        .dot {
+            position: absolute; width: 30px; height: 30px;
+            background: var(--accent); border: 4px solid var(--active);
+            border-radius: 50%; z-index: 10; pointer-events: none;
+            display: none; transform: translate(-50%, -50%);
+            box-shadow: 0 0 15px var(--accent);
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse { 
+            0% { transform: translate(-50%, -50%) scale(1); } 
+            50% { transform: translate(-50%, -50%) scale(1.2); } 
+            100% { transform: translate(-50%, -50%) scale(1); } 
+        }
+
+        #success {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%) scale(0); opacity: 0;
+            font-size: 8rem; pointer-events: none; z-index: 20;
+            transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        #success.show { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="controls">
+        <button id="mode-btn" class="btn-toggle" onclick="toggleMode()">ABC</button>
+        <button class="btn-nav" onclick="moveChar(-1)">◀</button>
+        <div id="char-display">A</div>
+        <button class="btn-nav" onclick="moveChar(1)">▶</button>
+    </div>
+    <button class="btn-clear" onclick="reset()">🗑️</button>
+</header>
+
+<div style="margin-top:15px; color:#b2bec3; font-weight:bold; letter-spacing:1px;">TOUCH THE DOT</div>
+
+<div id="canvas-container">
+    <svg id="svg-layer" viewBox="0 0 350 400"></svg>
+    <canvas id="draw-layer" width="350" height="400"></canvas>
+    <div id="dot" class="dot"></div>
+    <div id="success">🌟</div>
+</div>
+
+<script>
+    const canvas = document.getElementById('draw-layer');
+    const ctx = canvas.getContext('2d');
+    const svg = document.getElementById('svg-layer');
+    const dot = document.getElementById('dot');
+    const display = document.getElementById('char-display');
+    const modeBtn = document.getElementById('mode-btn');
+    const success = document.getElementById('success');
+
+    ctx.lineWidth = 26;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#2d3436';
+
+    // --- STROKE DATABASE ---
+    // p = points [x, y] to hit
+    // d = svg path string
+    
+    const upper = {
+        'A': [
+            { d: "M 175 50 L 75 350", p: [[175,50], [75,350]] },
+            { d: "M 175 50 L 275 350", p: [[175,50], [275,350]] },
+            { d: "M 90 220 L 260 220", p: [[90,220], [175,220], [260,220]] }
+        ],
+        'B': [
+            { d: "M 80 50 L 80 350", p: [[80,50], [80,350]] },
+            { d: "M 80 50 C 230 50, 230 190, 80 190", p: [[80,50], [180,70], [80,190]] },
+            { d: "M 80 190 C 250 190, 250 350, 80 350", p: [[80,190], [200,270], [80,350]] }
+        ],
+        'C': [{ d: "M 270 100 C 200 20, 50 100, 50 200 C 50 300, 200 380, 270 300", p: [[270,100], [175,50], [50,200], [175,350], [270,300]] }],
+        'D': [
+            { d: "M 80 50 L 80 350", p: [[80,50], [80,350]] },
+            { d: "M 80 50 C 280 50, 280 350, 80 350", p: [[80,50], [230,100], [230,300], [80,350]] }
+        ],
+        'E': [
+            { d: "M 80 50 L 80 350", p: [[80,50], [80,350]] },
+            { d: "M 80 50 L 250 50", p: [[80,50], [250,50]] },
+            { d: "M 80 200 L 220 200", p: [[80,200], [220,200]] },
+            { d: "M 80 350 L 250 350", p: [[80,350], [250,350]] }
+        ],
+        'F': [
+            { d: "M 80 50 L 80 350", p: [[80,50], [80,350]] },
+            { d: "M 80 50 L 250 50", p: [[80,50], [250,50]] },
+            { d: "M 80 200 L 220 200", p: [[80,200], [220,200]] }
+        ],
+        // G: C-shape, then Horizontal-Fold (Heng Zhe)
+        'G': [
+            { d: "M 270 100 C 200 20, 50 100, 50 200 C 50 300, 200 380, 270 300", p: [[270,100], [175,50], [50,200], [175,350], [270,300]] },
+            { d: "M 175 200 L 270 200 L 270 300", p: [[175,200], [270,200], [270,300]] }
+        ],
+        // H: Vertical, Horizontal, Vertical (Requested)
+        'H': [
+            { d: "M 80 50 L 80 350", p: [[80,50], [80,350]] },
+            { d: "M 80 200 L 270 200", p: [[80,200], [270,200]] },
+            { d: "M 270 50 L 270 350", p: [[270,50], [270,350]] }
+        ],
+        'I': [
+            { d: "M 100 50 L 250 50", p: [[100,50], [250,50]] },
+            { d: "M 175 50 L 175 350", p: [[175,50], [175,350]] },
+            { d: "M 100 350 L 250 350", p: [[100,350], [250,350]] }
+        ],
+        'J': [
+            { d: "M 100 50 L 300 50", p: [[100,50], [300,50]] },
+            { d: "M 200 50 L 200 250 C 200 350, 80 350, 80 250", p: [[200,50], [200,250], [80,250]] }
+        ],
+        'K': [
+            { d: "M 80 50 L 80 350", p: [[80,50], [80,350]] },
+            { d: "M 250 50 L 80 200", p: [[250,50], [80,200]] },
+            { d: "M 140 150 L 250 350", p: [[140,150], [250,350]] }
+        ],
+        'L': [{ d: "M 80 50 L 80 350 L 250 350", p: [[80,50], [80,350], [250,350]] }],
+        // M: Vertical, then (Slant-Slant-Vertical) connected
+        'M': [
+             { d: "M 80 50 L 80 350", p: [[80,50], [80,350]] }, 
+             { d: "M 80 50 L 175 350 L 270 50 L 270 350", p: [[80,50], [175,350], [270,50], [270,350]] }
+        ],
+        // N: Vertical, then (Slant-Up) connected
+        'N': [
+            { d: "M 80 50 L 80 350", p: [[80,50], [80,350]] },
+            { d: "M 80 50 L 270 350 L 270 50", p: [[80,50], [270,350], [270,50]] }
+        ],
+        'O': [{ d: "M 175 50 C 50 50, 50 350, 175 350 C 300 350, 300 50, 175 50", p: [[175,50], [50,200], [175,350], [300,200], [175,50]] }],
+        'P': [
+            { d: "M 80 50 L 80 350", p: [[80,50], [80,350]] },
+            { d: "M 80 50 C 250 50, 250 200, 80 200", p: [[80,50], [200,125], [80,200]] }
+        ],
+        'Q': [
+            { d: "M 175 50 C 50 50, 50 300, 175 300 C 300 300, 300 50, 175 50", p: [[175,50], [50,175], [175,300], [300,175], [175,50]] },
+            { d: "M 200 250 L 300 350", p: [[200,250], [300,350]] }
+        ],
+        'R': [
+            { d: "M 80 50 L 80 350", p: [[80,50], [80,350]] },
+            { d: "M 80 50 C 250 50, 250 200, 80 200", p: [[80,50], [200,125], [80,200]] },
+            { d: "M 150 200 L 250 350", p: [[150,200], [250,350]] }
+        ],
+        'S': [{ d: "M 250 80 C 200 20, 80 20, 80 120 C 80 220, 270 220, 270 300 C 270 380, 100 380, 80 320", p: [[250,80], [100,80], [100,150], [250,250], [250,320], [100,320]] }],
+        'T': [
+            { d: "M 50 50 L 300 50", p: [[50,50], [300,50]] },
+            { d: "M 175 50 L 175 350", p: [[175,50], [175,350]] }
+        ],
+        'U': [{ d: "M 80 50 L 80 250 C 80 350, 270 350, 270 250 L 270 50", p: [[80,50], [80,250], [175,350], [270,250], [270,50]] }],
+        // V: One connected stroke
+        'V': [
+            { d: "M 80 50 L 175 350 L 270 50", p: [[80,50], [175,350], [270,50]] }
+        ],
+        // W: One connected stroke
+        'W': [
+            { d: "M 50 50 L 110 350 L 175 150 L 240 350 L 300 50", p: [[50,50], [110,350], [175,150], [240,350], [300,50]] }
+        ],
+        'X': [
+            { d: "M 80 50 L 270 350", p: [[80,50], [270,350]] },
+            { d: "M 270 50 L 80 350", p: [[270,50], [80,350]] }
+        ],
+        // Y: V (connected) then Stem
+        'Y': [
+            { d: "M 80 50 L 175 200 L 270 50", p: [[80,50], [175,200], [270,50]] },
+            { d: "M 175 200 L 175 350", p: [[175,200], [175,350]] }
+        ],
+        'Z': [{ d: "M 80 50 L 270 50 L 80 350 L 270 350", p: [[80,50], [270,50], [80,350], [270,350]] }]
+    };
+
+    const lower = {
+        'a': [
+            { d: "M 230 140 C 120 140, 120 320, 230 320 C 250 320, 250 200, 250 200", p: [[230,140], [120,230], [230,320]] },
+            { d: "M 250 140 L 250 320", p: [[250,140], [250,320]] }
+        ],
+        'b': [
+            { d: "M 100 50 L 100 320", p: [[100,50], [100,320]] },
+            { d: "M 100 180 C 250 180, 250 320, 100 320", p: [[100,180], [230,250], [100,320]] }
+        ],
+        'c': [{ d: "M 250 150 C 100 150, 100 320, 250 320", p: [[250,150], [120,230], [250,320]] }],
+        'd': [
+            { d: "M 250 140 C 100 140, 100 320, 250 320", p: [[250,140], [140,230], [250,320]] },
+            { d: "M 250 50 L 250 320", p: [[250,50], [250,320]] }
+        ],
+        'e': [{ d: "M 100 220 L 250 220 C 250 120, 100 120, 100 220 C 100 340, 270 340, 250 300", p: [[100,220], [250,220], [175,140], [100,220], [250,300]] }],
+        'f': [
+            { d: "M 200 50 C 120 50, 150 150, 150 320", p: [[200,60], [150,50], [150,320]] },
+            { d: "M 100 150 L 230 150", p: [[100,150], [230,150]] }
+        ],
+        'g': [
+            { d: "M 230 140 C 100 140, 100 320, 230 320 C 250 320, 250 220, 250 220", p: [[230,140], [130,230], [230,320]] },
+            { d: "M 250 140 L 250 350 C 250 420, 150 420, 150 380", p: [[250,140], [250,350], [150,380]] }
+        ],
+        'h': [
+            { d: "M 100 50 L 100 320", p: [[100,50], [100,320]] },
+            { d: "M 100 200 Q 100 150 175 150 Q 250 150 250 200 L 250 320", p: [[100,200], [175,150], [250,200], [250,320]] }
+        ],
+        'i': [
+            { d: "M 175 150 L 175 320", p: [[175,150], [175,320]] },
+            { d: "M 175 80 L 175 100", p: [[175,90]] }
+        ],
+        'j': [
+            { d: "M 200 150 L 200 350 C 200 420, 120 420, 120 380", p: [[200,150], [200,350], [120,380]] },
+            { d: "M 200 80 L 200 100", p: [[200,90]] }
+        ],
+        'k': [
+            { d: "M 100 50 L 100 320", p: [[100,50], [100,320]] },
+            { d: "M 230 150 L 100 240", p: [[230,150], [100,240]] },
+            { d: "M 140 200 L 250 320", p: [[140,200], [250,320]] }
+        ],
+        'l': [{ d: "M 175 50 L 175 320", p: [[175,50], [175,320]] }],
+        'm': [
+            { d: "M 80 150 L 80 320", p: [[80,150], [80,320]] },
+            { d: "M 80 200 Q 80 150 125 150 Q 170 150 170 200 L 170 320", p: [[80,200], [125,150], [170,200], [170,320]] },
+            { d: "M 170 200 Q 170 150 215 150 Q 260 150 260 200 L 260 320", p: [[170,200], [215,150], [260,200], [260,320]] }
+        ],
+        'n': [
+            { d: "M 100 150 L 100 320", p: [[100,150], [100,320]] },
+            { d: "M 100 200 Q 100 150 175 150 Q 250 150 250 200 L 250 320", p: [[100,200], [175,150], [250,200], [250,320]] }
+        ],
+        'o': [{ d: "M 175 140 C 80 140, 80 320, 175 320 C 270 320, 270 140, 175 140", p: [[175,140], [80,230], [175,320], [270,230], [175,140]] }],
+        'p': [
+            { d: "M 100 150 L 100 380", p: [[100,150], [100,380]] },
+            { d: "M 100 160 C 250 160, 250 300, 100 300", p: [[100,160], [230,230], [100,300]] }
+        ],
+        'q': [
+            { d: "M 240 140 C 100 140, 100 300, 240 300", p: [[240,140], [120,220], [240,300]] },
+            { d: "M 250 140 L 250 380 C 250 380, 270 400, 290 360", p: [[250,140], [250,380], [270,380]] }
+        ],
+        'r': [
+            { d: "M 100 150 L 100 320", p: [[100,150], [100,320]] },
+            { d: "M 100 220 Q 100 150 200 150", p: [[100,220], [200,150]] }
+        ],
+        's': [{ d: "M 230 170 C 200 140, 120 140, 120 190 C 120 250, 230 250, 230 280 C 230 330, 120 330, 120 300", p: [[230,170], [120,170], [120,210], [230,260], [230,310], [120,310]] }],
+        't': [
+            { d: "M 175 60 L 175 320", p: [[175,60], [175,320]] },
+            { d: "M 120 150 L 230 150", p: [[120,150], [230,150]] }
+        ],
+        'u': [{ d: "M 100 150 L 100 280 C 100 320, 250 320, 250 280 L 250 150", p: [[100,150], [100,280], [175,320], [250,280], [250,150]] }],
+        'v': [
+            { d: "M 80 150 L 175 320 L 270 150", p: [[80,150], [175,320], [270,150]] }
+        ],
+        'w': [
+            { d: "M 60 150 L 110 320 L 175 200 L 240 320 L 290 150", p: [[60,150], [110,320], [175,200], [240,320], [290,150]] }
+        ],
+        'x': [
+            { d: "M 100 150 L 250 320", p: [[100,150], [250,320]] },
+            { d: "M 250 150 L 100 320", p: [[250,150], [100,320]] }
+        ],
+        'y': [
+            { d: "M 100 150 L 175 320", p: [[100,150], [175,320]] },
+            { d: "M 260 150 L 100 400", p: [[260,150], [175,320], [100,400]] }
+        ],
+        'z': [{ d: "M 100 150 L 250 150 L 100 320 L 250 320", p: [[100,150], [250,150], [100,320], [250,320]] }]
+    };
+
+    const num = {
+        '0': [{ d: "M 175 50 C 50 50, 50 350, 175 350 C 300 350, 300 50, 175 50", p: [[175,50], [70,200], [175,350], [280,200], [175,50]] }],
+        '1': [{ d: "M 175 50 L 175 350", p: [[175,50], [175,350]] }],
+        '2': [{ d: "M 80 100 C 100 20, 270 20, 270 120 C 270 200, 80 350, 80 350 L 280 350", p: [[80,100], [175,40], [270,120], [175,250], [80,350], [280,350]] }],
+        '3': [
+            { d: "M 80 80 C 80 20, 250 20, 250 110 C 250 180, 150 180, 150 180", p: [[80,80], [175,40], [250,110], [150,180]] },
+            { d: "M 150 180 C 280 180, 280 350, 80 350", p: [[150,180], [270,250], [80,350]] }
+        ],
+        '4': [
+            { d: "M 80 50 L 80 200 L 280 200", p: [[80,50], [80,200], [280,200]] },
+            { d: "M 220 50 L 220 350", p: [[220,50], [220,350]] }
+        ],
+        '5': [
+            { d: "M 100 50 L 100 170 C 100 170, 280 150, 280 300 C 280 400, 80 350, 80 350", p: [[100,50], [100,170], [200,180], [280,300], [150,350]] },
+            { d: "M 100 50 L 280 50", p: [[100,50], [280,50]] }
+        ],
+        '6': [{ d: "M 250 50 C 50 150, 50 350, 175 350 C 300 350, 300 200, 175 200 C 100 200, 100 300, 150 340", p: [[250,50], [100,200], [175,350], [280,250], [175,200]] }],
+        '7': [{ d: "M 60 50 L 280 50 L 120 350", p: [[60,50], [280,50], [120,350]] }],
+        '8': [{ d: "M 175 200 C 100 200, 100 50, 175 50 C 250 50, 250 200, 175 200 C 100 200, 100 350, 175 350 C 250 350, 250 200, 175 200", p: [[175,50], [100,125], [175,200], [250,275], [175,350], [100,275], [175,200], [250,125], [175,50]] }],
+        '9': [{ d: "M 250 150 C 250 50, 100 50, 100 150 C 100 250, 250 250, 250 150 L 250 350", p: [[250,150], [175,50], [100,150], [175,250], [250,150], [250,350]] }]
+    };
+
+    let mode = 0; 
+    let library = upper;
+    let keys = Object.keys(upper);
+    let idx = 0;
+    let sIdx = 0;
+    let pIdx = 0;
+    let isDrawing = false;
+
+    function toggleMode() {
+        mode = (mode + 1) % 3;
+        const b = document.getElementById('mode-btn');
+        if(mode === 0) {
+            library = upper; b.innerText = "ABC"; b.style.background = "#0984e3";
+        } else if(mode === 1) {
+            library = lower; b.innerText = "abc"; b.style.background = "#6c5ce7";
+        } else {
+            library = num; b.innerText = "123"; b.style.background = "#00b894";
+        }
+        keys = Object.keys(library);
+        idx = 0;
+        load();
+    }
+
+    function moveChar(dir) {
+        idx = idx + dir;
+        if(idx < 0) idx = keys.length - 1;
+        if(idx >= keys.length) idx = 0;
+        load();
+    }
+
+    function load() {
+        display.textContent = keys[idx];
+        reset();
+    }
+
+    function reset() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        sIdx = 0; pIdx = 0;
+        success.classList.remove('show');
+        drawGuides();
+    }
+
+    function drawGuides() {
+        svg.innerHTML = "";
+        const strokes = library[keys[idx]];
+        strokes.forEach((s, i) => {
+            const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            p.setAttribute("d", s.d);
+            p.setAttribute("fill", "none");
+            p.setAttribute("stroke", "#dcdde1");
+            p.setAttribute("stroke-width", "26");
+            p.setAttribute("stroke-linecap", "round");
+            p.setAttribute("stroke-linejoin", "round");
+            p.id = "g-" + i;
+            svg.appendChild(p);
+        });
+        update();
+    }
+
+    function update() {
+        const strokes = library[keys[idx]];
+        // Highlight active stroke
+        for(let i=0; i<strokes.length; i++) {
+            const el = document.getElementById("g-" + i);
+            if(el) el.setAttribute("stroke", i === sIdx ? "#ffeaa7" : "#dcdde1");
+        }
+
+        if(sIdx >= strokes.length) {
+            dot.style.display = "none";
+            success.classList.add('show');
+            return;
+        }
+
+        const pt = strokes[sIdx].p[pIdx];
+        dot.style.display = "block";
+        dot.style.left = pt[0] + "px";
+        dot.style.top = pt[1] + "px";
+    }
+
+    function getXY(e) {
+        const r = canvas.getBoundingClientRect();
+        const t = e.touches ? e.touches[0] : e;
+        // Map screen pos to canvas 350x400
+        return {
+            x: (t.clientX - r.left) * (350 / r.width),
+            y: (t.clientY - r.top) * (400 / r.height)
+        };
+    }
+
+    function check(x, y) {
+        const strokes = library[keys[idx]];
+        if(sIdx >= strokes.length) return;
+
+        const target = strokes[sIdx].p[pIdx];
+        const dist = Math.hypot(x - target[0], y - target[1]);
+
+        if(dist < 50) { // Tolerance
+            pIdx++;
+            if(pIdx >= strokes[sIdx].p.length) {
+                sIdx++;
+                pIdx = 0;
+            }
+            update();
+        }
+    }
+
+    // HANDLERS
+    function down(e) {
+        e.preventDefault(); isDrawing = true;
+        const p = getXY(e);
+        ctx.beginPath(); ctx.moveTo(p.x, p.y);
+        check(p.x, p.y);
+    }
+    function move(e) {
+        if(!isDrawing) return;
+        e.preventDefault();
+        const p = getXY(e);
+        ctx.lineTo(p.x, p.y); ctx.stroke();
+        check(p.x, p.y);
+    }
+    function up() { isDrawing = false; }
+
+    canvas.addEventListener('mousedown', down);
+    canvas.addEventListener('mousemove', move);
+    canvas.addEventListener('mouseup', up);
+    canvas.addEventListener('touchstart', down, {passive:false});
+    canvas.addEventListener('touchmove', move, {passive:false});
+    canvas.addEventListener('touchend', up);
+
+    // INIT
+    load();
+</script>
+</body>
+</html>
